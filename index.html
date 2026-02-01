@@ -2,64 +2,173 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Boxing Coach Pro</title>
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#222222">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3344/3344279.png"> ```
-    <title>AI Coach</title>
+    <meta name="theme-color" content="#111111">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3344/3344279.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@300;600&display=swap" rel="stylesheet">
+
     <style>
-        body { font-family: sans-serif; text-align: center; background: #222; color: #fff; display: flex; flex-direction: column; justify-content: center; height: 100vh; margin: 0; }
-        #combo-display { font-size: 3rem; font-weight: bold; margin: 20px; color: #00e5ff; text-transform: uppercase; height: 150px; display: flex; align-items: center; justify-content: center; padding: 0 10px; line-height: 1.2;}
-        #timer-display { font-size: 5rem; font-weight: bold; color: #ffeb3b; margin-bottom: 20px; font-variant-numeric: tabular-nums; }
+        :root {
+            --primary: #00ff88; /* เขียว Neon */
+            --danger: #ff2a2a;  /* แดง Neon */
+            --bg: #111111;
+            --card: #1e1e1e;
+            --text: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Teko', sans-serif;
+            margin: 0;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: background-color 0.1s; /* สำหรับ Effect จอกระพริบ */
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* ส่วนหัว: เวลาและสถานะ */
+        header { text-align: center; margin-top: 10px; }
+        #timer-display {
+            font-size: 6rem;
+            line-height: 0.9;
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+            font-variant-numeric: tabular-nums;
+        }
+        .status-indicator {
+            font-size: 1.8rem;
+            color: #666;
+            letter-spacing: 2px;
+            margin-top: 5px;
+        }
+
+        /* หน้าจอแสดงผลหลัก */
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #combo-display {
+            font-size: 3.5rem; /* ตัวหนังสือใหญ่สะใจ */
+            text-align: center;
+            text-transform: uppercase;
+            line-height: 1.1;
+            font-weight: 600;
+            padding: 0 10px;
+        }
+
+        /* ปุ่มและแผงควบคุม */
+        footer { margin-bottom: 20px; }
         
-        button { padding: 15px 40px; font-size: 1.5rem; background: #00e676; color: #000; border: none; border-radius: 50px; cursor: pointer; margin-top: 10px; font-weight: bold; -webkit-tap-highlight-color: transparent; }
-        button:active { transform: scale(0.95); }
-        button.stop { background: #ff3d00; color: white; }
-        
-        .controls { margin-top: 30px; background: #333; padding: 20px; border-radius: 15px; display: inline-block; max-width: 90%; }
-        label { display: block; margin: 10px 0; font-size: 1.1rem; }
-        input[type=range] { width: 100%; max-width: 250px; accent-color: #00e5ff; height: 30px; }
+        button {
+            width: 100%;
+            padding: 18px;
+            font-size: 2.2rem;
+            font-family: 'Teko', sans-serif;
+            font-weight: bold;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+        .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 15px var(--danger); }
+        button:active { transform: scale(0.96); opacity: 0.9; }
+
+        .settings-panel {
+            background: var(--card);
+            padding: 15px 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            border: 1px solid #333;
+        }
+        .control-group { margin-bottom: 12px; }
+        label { display: block; font-size: 1.3rem; margin-bottom: 5px; color: #aaa; }
+        label span { color: var(--primary); font-weight: bold; }
+        input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="timer-display">3:00</div>
-    <div id="combo-display">READY?</div>
-    
-    <button id="startBtn" onclick="toggleTraining()">START ROUND</button>
-    
-    <div class="controls">
-        <label>⏱️ เวลาต่อยก (นาที): <span id="timeVal">3</span>
-            <br><input type="range" id="roundTimeInput" min="1" max="5" value="3" oninput="updateTimeSetting()">
-        </label>
-        <hr style="border-color: #444;">
-        <label>⏳ เวลาให้ต่อย (วิ): <span id="speedVal">3.0</span>
-            <br><input type="range" id="intervalRange" min="1500" max="6000" step="500" value="3000" oninput="document.getElementById('speedVal').innerText = (this.value/1000).toFixed(1)">
-        </label>
+    <div class="container">
+        <header>
+            <div id="timer-display">3:00</div>
+            <div class="status-indicator" id="status-text">READY</div>
+        </header>
+
+        <main>
+            <div id="combo-display">TAP START</div>
+        </main>
+
+        <footer>
+            <button id="main-btn" class="btn-start" onclick="toggleTraining()">START ROUND</button>
+            
+            <div class="settings-panel">
+                <div class="control-group">
+                    <label>⏱️ เวลาต่อยก: <span id="timeVal">3</span> นาที</label>
+                    <input type="range" id="roundTimeInput" min="1" max="5" value="3" oninput="updateSettings()">
+                </div>
+                <div class="control-group">
+                    <label>⚡ เวลาให้ต่อย: <span id="speedVal">3.0</span> วินาที</label>
+                    <input type="range" id="intervalRange" min="1500" max="6000" step="500" value="3000" oninput="updateSettings()">
+                </div>
+            </div>
+        </footer>
     </div>
 
     <script>
-        // --- กฎการเชื่อมท่า (เพิ่มลดตรงนี้ได้เลย) ---
+        // --- 1. TRANSITION LOGIC (สมอง AI) ---
         const transitions = {
-            'START': ['1', '1', '1', '1 2', '1 1', 'slip left'], 
-            '1': ['2', '2', '3', 'slip left', 'body 3'],         
-            '1 1': ['2', '2', 'drop'],                           
-            '1 2': ['3', '5', 'roll under', 'slip right'],       
-            '2': ['3', '5', 'roll under', 'pivot'],
-            '3': ['2', '4', '6', 'roll under'],                  
-            'body 3': ['2', '4', 'uppercut left'],               
-            'slip left': ['3', 'body 3', 'uppercut left'],       
-            'slip right': ['2', 'body 2', 'uppercut right'],     
-            'roll under': ['2', '3', 'pivot'],
-            'pivot': ['2', '1'],
-            'drop': ['uppercut right', '3'],
-            '5': ['2', '4', 'roll under'],
-            '4': ['3', '5', 'slip left'],
-            '6': ['3', '5', 'slip left']
+            // Starters
+            'START': ['1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
+
+            // Jab Series (1)
+            '1': ['2', '2', 'body-2', '3', '5', 'slip-left', 'roll-under', '1'],
+            '1-1': ['2', 'body-2', 'slip-left'],
+
+            // Cross Series (2) - โหลดซ้าย
+            '2': ['3', '3', 'body-3', '5', 'roll-under', 'slip-right', 'pivot'],
+            'body-2': ['3', '5', 'uppercut-left', 'slip-left'],
+
+            // Hook Series (3) - โหลดขวา
+            '3': ['2', '6', 'body-2', 'roll-under', 'pivot'],
+            'body-3': ['2', '6', '5', '3', 'pivot'], // Tyson style (body-3 -> 3)
+
+            // Uppercuts & Defense
+            '5': ['2', '4', '3', 'roll-under'],
+            '6': ['3', '5', 'weave'],
+            'slip-left':  ['3', '5', 'body-3', 'pivot'],
+            'slip-right': ['2', '6', 'body-2'],
+            'roll-under': ['3', '2', 'pivot', '5'],
+            'weave':      ['2', '3'],
+            'pivot':      ['2', '1-2', '6'],
+            'drop':       ['uppercut-right', '3']
         };
 
+        // --- 2. CORE FUNCTIONS ---
         function generateCombo(length = 4) {
             let combo = [];
             let currentMove = 'START';
@@ -68,43 +177,153 @@
             for (let i = 0; i < actualLength; i++) {
                 let possibleMoves = transitions[currentMove] || transitions['START'];
                 let nextMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                
                 if (nextMove !== 'START') combo.push(nextMove);
-                if (nextMove.includes(' ')) {
+                
+                // Logic จัดการ key (แยก space, ไม่แยก hyphen)
+                if (nextMove.includes(' ') && !nextMove.includes('-')) {
                     let parts = nextMove.split(' ');
                     currentMove = parts[parts.length - 1];
                 } else {
                     currentMove = nextMove;
                 }
             }
-            return combo.join(" ");
+            // แปลง hyphen กลับเป็น space เพื่อให้อ่านออกเสียงถูกต้อง (เช่น slip-left -> slip left)
+            return combo.join(" ").replace(/-/g, " ");
         }
 
+        // --- 3. STATE & UTILS ---
         let isTraining = false;
-        let roundTimer = null;
         let timeLeft = 180;
-        let wakeLock = null; 
+        let timerInterval = null;
+        let wakeLock = null;
 
-        function updateTimeSetting() {
+        const ui = {
+            timer: document.getElementById('timer-display'),
+            combo: document.getElementById('combo-display'),
+            btn: document.getElementById('main-btn'),
+            status: document.getElementById('status-text'),
+            timeInput: document.getElementById('roundTimeInput'),
+            speedInput: document.getElementById('intervalRange'),
+            timeVal: document.getElementById('timeVal'),
+            speedVal: document.getElementById('speedVal')
+        };
+
+        function updateSettings() {
             if (!isTraining) {
-                const mins = document.getElementById('roundTimeInput').value;
-                document.getElementById('timeVal').innerText = mins;
-                timeLeft = mins * 60;
+                // อัปเดตตัวเลข
+                ui.timeVal.innerText = ui.timeInput.value;
+                ui.speedVal.innerText = (ui.speedInput.value / 1000).toFixed(1);
+                
+                // อัปเดตเวลาถอยหลัง
+                timeLeft = ui.timeInput.value * 60;
                 updateTimerDisplay();
+
+                // Save ลงเครื่อง (LocalStorage)
+                localStorage.setItem('boxing_time', ui.timeInput.value);
+                localStorage.setItem('boxing_speed', ui.speedInput.value);
             }
         }
 
         function updateTimerDisplay() {
             const m = Math.floor(timeLeft / 60);
             const s = timeLeft % 60;
-            document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+            ui.timer.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
         }
 
-        function playBell() {
+        function loadSettings() {
+            const sTime = localStorage.getItem('boxing_time');
+            const sSpeed = localStorage.getItem('boxing_speed');
+            if (sTime) { ui.timeInput.value = sTime; }
+            if (sSpeed) { ui.speedInput.value = sSpeed; }
+            updateSettings(); // เรียกเพื่อให้ UI อัปเดตตามค่าที่โหลดมา
+        }
+
+        // --- 4. RUN LOOP ---
+        async function runComboLoop() {
+            if (!isTraining) return;
+
+            const comboText = generateCombo(5);
+            ui.combo.innerText = comboText;
+            
+            // Visual Flash (กระพริบจอเบาๆ)
+            document.body.style.backgroundColor = "#222"; 
+            setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
+
+            // Audio Logic
+            const msg = new SpeechSynthesisUtterance(comboText);
+            msg.lang = 'en-US';
+            msg.rate = 1.1; 
+            msg.pitch = 0.6; // เสียงเข้ม
+            msg.volume = 1.0;
+
+            msg.onend = function() {
+                if (isTraining) {
+                    setTimeout(runComboLoop, ui.speedInput.value);
+                }
+            };
+
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(msg);
+        }
+
+        // --- 5. CONTROLS ---
+        function toggleTraining() {
+            if (!isTraining) {
+                // START
+                isTraining = true;
+                ui.btn.innerText = "STOP";
+                ui.btn.className = "btn-stop";
+                ui.status.innerText = "FIGHT!";
+                ui.status.style.color = "#ff2a2a";
+                
+                playTone(880); // Bell
+                requestWakeLock();
+
+                timeLeft = ui.timeInput.value * 60;
+                updateTimerDisplay();
+
+                // Timer Count
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    updateTimerDisplay();
+                    if (timeLeft <= 0) stopTraining();
+                }, 1000);
+
+                setTimeout(runComboLoop, 1000); // เริ่มสั่งหมัดหลัง 1 วิ
+
+            } else {
+                // STOP
+                stopTraining();
+            }
+        }
+
+        function stopTraining() {
+            isTraining = false;
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+            
+            ui.btn.innerText = "START ROUND";
+            ui.btn.className = "btn-start";
+            ui.status.innerText = "REST";
+            ui.status.style.color = "#666";
+            ui.combo.innerText = "GOOD JOB";
+            
+            playTone(880); // End Bell
+            speakSimple("Time!");
+
+            // Reset
+            updateSettings(); 
+            if (wakeLock !== null) { wakeLock.release().then(() => wakeLock = null); }
+        }
+
+        // Sound & WakeLock Helpers
+        function playTone(freq) {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-            osc.type = 'triangle'; 
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 1.5);
             osc.connect(gain);
             gain.connect(ctx.destination);
@@ -112,72 +331,19 @@
             osc.stop(ctx.currentTime + 1.5);
         }
 
+        function speakSimple(text) {
+            const msg = new SpeechSynthesisUtterance(text);
+            msg.lang = 'en-US';
+            window.speechSynthesis.speak(msg);
+        }
+
         async function requestWakeLock() {
             try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
-        async function runComboLoop() {
-            if (!isTraining) return;
+        // Init
+        loadSettings();
 
-            const comboText = generateCombo(5); 
-            document.getElementById('combo-display').innerText = comboText;
-
-            const msg = new SpeechSynthesisUtterance(comboText);
-            msg.lang = 'en-US'; 
-            
-            // --- 🔊 โซนปรับเสียง (Sound Tuning) ---
-            msg.rate = 1.1;     // พูดเร็วขึ้นหน่อย
-            msg.pitch = 0.6;    // [ทีเด็ด] ปรับเสียงให้ต่ำและดุ (ปกติคือ 1.0)
-            msg.volume = 1.0;
-            // ------------------------------------
-
-            msg.onend = function() {
-                if (isTraining) {
-                    const gap = document.getElementById('intervalRange').value;
-                    setTimeout(runComboLoop, gap); 
-                }
-            };
-            
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(msg);
-        }
-
-        function stopTraining() {
-            isTraining = false;
-            clearInterval(roundTimer);
-            window.speechSynthesis.cancel();
-            
-            const btn = document.getElementById('startBtn');
-            btn.innerText = "START ROUND";
-            btn.className = "";
-            
-            playBell(); 
-            document.getElementById('combo-display').innerText = "REST";
-            updateTimeSetting();
-            if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); }
-        }
-
-        function toggleTraining() {
-            const btn = document.getElementById('startBtn');
-            if (!isTraining) {
-                isTraining = true;
-                btn.innerText = "STOP";
-                btn.className = "stop";
-                requestWakeLock(); 
-                playBell();
-
-                roundTimer = setInterval(() => {
-                    timeLeft--;
-                    updateTimerDisplay();
-                    if (timeLeft <= 0) { stopTraining(); }
-                }, 1000);
-
-                setTimeout(runComboLoop, 1000);
-            } else {
-                stopTraining();
-            }
-        }
-        updateTimeSetting();
     </script>
 </body>
 </html>
