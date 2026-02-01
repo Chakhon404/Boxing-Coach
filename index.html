@@ -48,14 +48,14 @@
 
         header { text-align: center; margin-top: 10px; }
         #timer-display {
-            font-size: 6rem;
+            font-size: 7rem; /* ขยายให้ใหญ่สะใจ เพราะเอาที่บังออกแล้ว */
             line-height: 0.9;
             color: var(--primary);
-            text-shadow: 0 0 15px rgba(0, 255, 136, 0.2);
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
             font-variant-numeric: tabular-nums;
         }
         .status-indicator {
-            font-size: 1.8rem;
+            font-size: 2rem;
             color: #666;
             letter-spacing: 2px;
             margin-top: 5px;
@@ -69,9 +69,8 @@
             position: relative;
         }
 
-        /* เอาวงกลมบังจอออกแล้ว */
         #combo-display {
-            font-size: 3.5rem;
+            font-size: 4rem; /* ใหญ่ขึ้นอีก */
             text-align: center;
             text-transform: uppercase;
             line-height: 1.1;
@@ -82,10 +81,11 @@
         
         footer { margin-bottom: 20px; }
         
+        /* ปุ่มหลัก */
         button {
             width: 100%;
-            padding: 18px;
-            font-size: 2.2rem;
+            padding: 20px;
+            font-size: 2.5rem;
             font-family: 'Teko', sans-serif;
             font-weight: bold;
             border: none;
@@ -94,24 +94,55 @@
             text-transform: uppercase;
             transition: all 0.2s;
             -webkit-tap-highlight-color: transparent;
+            margin-bottom: 10px;
         }
-        .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
-        .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 15px var(--danger); }
+        .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0,255,136,0.4); }
+        .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 20px rgba(255,42,42,0.4); }
         button:active { transform: scale(0.96); opacity: 0.9; }
 
+        /* ปุ่มเปิดลิ้นชัก (ตัวเล็กๆ สีเทา) */
+        .btn-toggle-settings {
+            background: transparent;
+            color: #555;
+            font-size: 1.2rem;
+            padding: 10px;
+            border: 2px solid #333;
+            margin-top: 5px;
+        }
+        .btn-toggle-settings:hover { color: #fff; border-color: #555; }
+
+        /* ลิ้นชักเก็บการตั้งค่า (Drawer) */
         .settings-panel {
             background: var(--card);
-            padding: 15px 20px;
             border-radius: 15px;
-            margin-top: 20px;
-            border: 1px solid #333;
+            overflow: hidden;
+            
+            /* เทคนิคการซ่อนแบบ Slide */
+            max-height: 0; 
+            opacity: 0;
+            margin-top: 0;
+            padding: 0 20px; /* เริ่มต้นไม่มี padding */
+            border: none;
+            
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .control-group { margin-bottom: 12px; }
+
+        /* ตอนเปิดลิ้นชัก */
+        .settings-panel.open {
+            max-height: 500px; /* ความสูงเผื่อไว้ */
+            opacity: 1;
+            margin-top: 15px;
+            padding: 20px; /* คืน padding */
+            border: 1px solid #333;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+        }
+
+        .control-group { margin-bottom: 15px; }
         label { display: block; font-size: 1.3rem; margin-bottom: 5px; color: #aaa; }
         label span { color: var(--primary); font-weight: bold; }
         
         .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .toggle-label { font-size: 1.5rem; color: var(--accent); }
+        .toggle-label { font-size: 1.4rem; color: var(--accent); }
         input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
 
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
@@ -132,7 +163,11 @@
         <footer>
             <button id="main-btn" class="btn-start" onclick="toggleTraining()">START ROUND</button>
             
-            <div class="settings-panel">
+            <button id="settings-btn" class="btn-toggle-settings" onclick="toggleSettingsDrawer()">
+                ⚙️ SETTINGS (กดเพื่อตั้งค่า)
+            </button>
+            
+            <div class="settings-panel" id="settings-panel">
                 <div class="toggle-row">
                     <div class="toggle-label">🎵 เสียงจังหวะ (BPM)</div>
                     <input type="checkbox" id="rhythmToggle" checked onchange="updateSettings()">
@@ -206,6 +241,8 @@
             timer: document.getElementById('timer-display'),
             combo: document.getElementById('combo-display'),
             btn: document.getElementById('main-btn'),
+            settingsBtn: document.getElementById('settings-btn'),
+            settingsPanel: document.getElementById('settings-panel'),
             status: document.getElementById('status-text'),
             timeInput: document.getElementById('roundTimeInput'),
             speedInput: document.getElementById('intervalRange'),
@@ -215,6 +252,16 @@
             speedVal: document.getElementById('speedVal'),
             bpmVal: document.getElementById('bpmVal')
         };
+
+        // --- ฟังก์ชันเปิด/ปิดลิ้นชัก ---
+        function toggleSettingsDrawer() {
+            ui.settingsPanel.classList.toggle('open');
+            if (ui.settingsPanel.classList.contains('open')) {
+                ui.settingsBtn.innerText = "🔼 HIDE SETTINGS";
+            } else {
+                ui.settingsBtn.innerText = "⚙️ SETTINGS";
+            }
+        }
 
         function updateSettings() {
             if (!isTraining) {
@@ -252,18 +299,12 @@
             updateSettings();
         }
 
-        // --- RHYTHM ENGINE (มีแค่เสียง) ---
         function startRhythm() {
             if (!ui.rhythmToggle.checked) return;
-
             const bpm = parseInt(ui.bpmInput.value);
             const intervalMs = 60000 / bpm;
-
-            playBeatSound(); // เล่นครั้งแรกทันที
-
-            rhythmInterval = setInterval(() => {
-                playBeatSound(); // เล่นวนไปเรื่อยๆ
-            }, intervalMs);
+            playBeatSound(); 
+            rhythmInterval = setInterval(() => { playBeatSound(); }, intervalMs);
         }
 
         function stopRhythm() {
@@ -274,14 +315,11 @@
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
-
             osc.type = 'sine';
             osc.frequency.setValueAtTime(60, ctx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
-            
             gain.gain.setValueAtTime(0.3, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-
             osc.connect(gain);
             gain.connect(ctx.destination);
             osc.start();
@@ -294,7 +332,6 @@
             const comboText = generateCombo();
             ui.combo.innerText = comboText;
             
-            // จอกระพริบเบาๆ (ไม่บังจอ)
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
 
@@ -316,6 +353,10 @@
 
         function toggleTraining() {
             if (!isTraining) {
+                // เริ่มซ้อม: ปิดลิ้นชักอัตโนมัติ เพื่อให้จอโล่ง
+                ui.settingsPanel.classList.remove('open');
+                ui.settingsBtn.innerText = "⚙️ SETTINGS";
+
                 isTraining = true;
                 ui.btn.innerText = "STOP";
                 ui.btn.className = "btn-stop";
@@ -328,7 +369,7 @@
                 timeLeft = ui.timeInput.value * 60;
                 updateTimerDisplay();
 
-                startRhythm(); // เริ่มเสียงจังหวะ
+                startRhythm();
 
                 timerInterval = setInterval(() => {
                     timeLeft--;
@@ -346,7 +387,7 @@
         function stopTraining() {
             isTraining = false;
             clearInterval(timerInterval);
-            stopRhythm(); // หยุดเสียงจังหวะ
+            stopRhythm();
             window.speechSynthesis.cancel();
             
             ui.btn.innerText = "START ROUND";
