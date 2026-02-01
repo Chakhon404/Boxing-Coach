@@ -28,7 +28,7 @@
             font-family: 'Teko', sans-serif;
             margin: 0;
             height: 100vh;
-            overflow: hidden;
+            overflow: hidden; /* ห้ามเลื่อนทั้งหน้า */
             display: flex;
             flex-direction: column;
             transition: background-color 0.1s;
@@ -37,18 +37,27 @@
         .container {
             flex: 1;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* แนวตั้งเป็นหลัก */
             justify-content: space-between;
             padding: 20px;
-            max-width: 600px;
-            margin: 0 auto;
             width: 100%;
             box-sizing: border-box;
+            max-width: 800px; /* ขยายความกว้างให้รองรับแนวนอน */
+            margin: 0 auto;
         }
 
-        header { text-align: center; margin-top: 10px; }
+        /* กลุ่มแสดงผล (เวลา + ท่า) */
+        .display-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        header { text-align: center; margin-top: 10px; width: 100%; }
         #timer-display {
-            font-size: 7rem; /* ขยายให้ใหญ่สะใจ เพราะเอาที่บังออกแล้ว */
+            font-size: 7rem;
             line-height: 0.9;
             color: var(--primary);
             text-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
@@ -62,15 +71,15 @@
         }
 
         main {
-            flex: 1;
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
+            margin-bottom: 20px;
         }
 
         #combo-display {
-            font-size: 4rem; /* ใหญ่ขึ้นอีก */
+            font-size: 4rem;
             text-align: center;
             text-transform: uppercase;
             line-height: 1.1;
@@ -79,9 +88,15 @@
             z-index: 2;
         }
         
-        footer { margin-bottom: 20px; }
+        /* ส่วนควบคุม (ปุ่ม + ลิ้นชัก) */
+        footer { 
+            width: 100%; 
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
         
-        /* ปุ่มหลัก */
         button {
             width: 100%;
             padding: 20px;
@@ -95,12 +110,12 @@
             transition: all 0.2s;
             -webkit-tap-highlight-color: transparent;
             margin-bottom: 10px;
+            flex-shrink: 0;
         }
         .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0,255,136,0.4); }
         .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 20px rgba(255,42,42,0.4); }
         button:active { transform: scale(0.96); opacity: 0.9; }
 
-        /* ปุ่มเปิดลิ้นชัก (ตัวเล็กๆ สีเทา) */
         .btn-toggle-settings {
             background: transparent;
             color: #555;
@@ -109,30 +124,25 @@
             border: 2px solid #333;
             margin-top: 5px;
         }
-        .btn-toggle-settings:hover { color: #fff; border-color: #555; }
 
-        /* ลิ้นชักเก็บการตั้งค่า (Drawer) */
         .settings-panel {
             background: var(--card);
             border-radius: 15px;
             overflow: hidden;
-            
-            /* เทคนิคการซ่อนแบบ Slide */
             max-height: 0; 
             opacity: 0;
             margin-top: 0;
-            padding: 0 20px; /* เริ่มต้นไม่มี padding */
+            padding: 0 20px;
             border: none;
-            
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* ตอนเปิดลิ้นชัก */
         .settings-panel.open {
-            max-height: 500px; /* ความสูงเผื่อไว้ */
+            max-height: 60vh; /* ให้สูงไม่เกิน 60% ของจอ */
+            overflow-y: auto; /* ถ้าล้นให้เลื่อนได้ */
             opacity: 1;
             margin-top: 15px;
-            padding: 20px; /* คืน padding */
+            padding: 20px;
             border: 1px solid #333;
             box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
         }
@@ -144,27 +154,73 @@
         .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .toggle-label { font-size: 1.4rem; color: var(--accent); }
         input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
-
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
+
+        /* --- 📱 กฎพิเศษสำหรับแนวนอน (Landscape Mode) --- */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .container {
+                flex-direction: row; /* เปลี่ยนเป็นเรียงซ้าย-ขวา */
+                align-items: center;
+                padding: 10px 40px; /* เพิ่มขอบข้าง */
+                gap: 30px;
+            }
+
+            /* ฝั่งซ้าย: แสดงเวลาและท่า */
+            .display-area {
+                flex: 1.2;
+                align-items: flex-end; /* ชิดขวานิดนึงให้ใกล้ปุ่ม */
+                text-align: right;
+            }
+
+            /* ฝั่งขวา: ปุ่มและตั้งค่า */
+            footer {
+                flex: 1;
+                margin-bottom: 0;
+                justify-content: center;
+            }
+
+            /* ปรับขนาดตัวอักษรให้เล็กลงหน่อย เพื่อไม่ให้ล้น */
+            #timer-display { font-size: 5rem; text-align: right; width: 100%;}
+            #combo-display { font-size: 3rem; text-align: right; width: 100%; }
+            header { margin-top: 0; }
+            main { margin-bottom: 0; justify-content: flex-end;}
+
+            button {
+                font-size: 1.8rem;
+                padding: 15px;
+            }
+
+            /* ลิ้นชักตั้งค่าในแนวนอน */
+            .settings-panel.open {
+                max-height: 150px; /* จำกัดความสูง */
+                position: absolute; /* ลอยขึ้นมา */
+                bottom: 10px;
+                right: 10px;
+                left: 10px;
+                z-index: 10;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <header>
-            <div id="timer-display">3:00</div>
-            <div class="status-indicator" id="status-text">READY</div>
-        </header>
+        <div class="display-area">
+            <header>
+                <div id="timer-display">3:00</div>
+                <div class="status-indicator" id="status-text">READY</div>
+            </header>
 
-        <main>
-            <div id="combo-display">TAP START</div>
-        </main>
+            <main>
+                <div id="combo-display">TAP START</div>
+            </main>
+        </div>
 
         <footer>
             <button id="main-btn" class="btn-start" onclick="toggleTraining()">START ROUND</button>
             
             <button id="settings-btn" class="btn-toggle-settings" onclick="toggleSettingsDrawer()">
-                ⚙️ SETTINGS (กดเพื่อตั้งค่า)
+                ⚙️ SETTINGS
             </button>
             
             <div class="settings-panel" id="settings-panel">
@@ -176,9 +232,7 @@
                     <label>ความเร็วโยก: <span id="bpmVal">60</span> BPM</label>
                     <input type="range" id="bpmRange" min="40" max="120" step="5" value="60" oninput="updateSettings()">
                 </div>
-                
                 <hr style="border-color: #333; margin: 15px 0;">
-
                 <div class="control-group">
                     <label>⏱️ เวลาต่อยก: <span id="timeVal">3</span> นาที</label>
                     <input type="range" id="roundTimeInput" min="1" max="5" value="3" oninput="updateSettings()">
@@ -253,11 +307,10 @@
             bpmVal: document.getElementById('bpmVal')
         };
 
-        // --- ฟังก์ชันเปิด/ปิดลิ้นชัก ---
         function toggleSettingsDrawer() {
             ui.settingsPanel.classList.toggle('open');
             if (ui.settingsPanel.classList.contains('open')) {
-                ui.settingsBtn.innerText = "🔼 HIDE SETTINGS";
+                ui.settingsBtn.innerText = "🔼 HIDE";
             } else {
                 ui.settingsBtn.innerText = "⚙️ SETTINGS";
             }
@@ -353,7 +406,6 @@
 
         function toggleTraining() {
             if (!isTraining) {
-                // เริ่มซ้อม: ปิดลิ้นชักอัตโนมัติ เพื่อให้จอโล่ง
                 ui.settingsPanel.classList.remove('open');
                 ui.settingsBtn.innerText = "⚙️ SETTINGS";
 
