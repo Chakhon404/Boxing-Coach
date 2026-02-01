@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Boxing Coach Pro</title>
+    <title>AI Boxing Coach Pro (Rhythm Edition)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#111111">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3344/3344279.png">
-
     <link href="https://fonts.googleapis.com/css2?family=Teko:wght@300;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --primary: #00ff88; /* เขียว Neon */
-            --danger: #ff2a2a;  /* แดง Neon */
+            --primary: #00ff88;
+            --danger: #ff2a2a;
+            --accent: #00e5ff; /* สีฟ้าสำหรับจังหวะ */
             --bg: #111111;
             --card: #1e1e1e;
             --text: #ffffff;
@@ -31,7 +31,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: background-color 0.1s; /* สำหรับ Effect จอกระพริบ */
+            transition: background-color 0.1s;
         }
 
         .container {
@@ -46,7 +46,6 @@
             box-sizing: border-box;
         }
 
-        /* ส่วนหัว: เวลาและสถานะ */
         header { text-align: center; margin-top: 10px; }
         #timer-display {
             font-size: 6rem;
@@ -62,23 +61,40 @@
             margin-top: 5px;
         }
 
-        /* หน้าจอแสดงผลหลัก */
         main {
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
         #combo-display {
-            font-size: 3.5rem; /* ตัวหนังสือใหญ่สะใจ */
+            font-size: 3.5rem;
             text-align: center;
             text-transform: uppercase;
             line-height: 1.1;
             font-weight: 600;
             padding: 0 10px;
+            z-index: 2;
+        }
+        
+        /* วงกลมจังหวะ (Visual Beat) */
+        .beat-circle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: var(--accent);
+            border-radius: 50%;
+            opacity: 0;
+            transform: scale(1);
+            transition: transform 0.1s, opacity 0.2s;
+            z-index: 1;
+        }
+        .beat-active {
+            opacity: 0.3;
+            transform: scale(15); /* ขยายวูบใหญ่ๆ */
         }
 
-        /* ปุ่มและแผงควบคุม */
         footer { margin-bottom: 20px; }
         
         button {
@@ -108,6 +124,12 @@
         .control-group { margin-bottom: 12px; }
         label { display: block; font-size: 1.3rem; margin-bottom: 5px; color: #aaa; }
         label span { color: var(--primary); font-weight: bold; }
+        
+        /* Toggle Switch สำหรับ Rhythm */
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .toggle-label { font-size: 1.5rem; color: var(--accent); }
+        input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
+
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
     </style>
 </head>
@@ -120,6 +142,7 @@
         </header>
 
         <main>
+            <div class="beat-circle" id="visual-beat"></div>
             <div id="combo-display">TAP START</div>
         </main>
 
@@ -127,6 +150,17 @@
             <button id="main-btn" class="btn-start" onclick="toggleTraining()">START ROUND</button>
             
             <div class="settings-panel">
+                <div class="toggle-row">
+                    <div class="toggle-label">🎵 เสียงจังหวะ (BPM)</div>
+                    <input type="checkbox" id="rhythmToggle" checked onchange="updateSettings()">
+                </div>
+                <div class="control-group">
+                    <label>ความเร็วโยก: <span id="bpmVal">60</span> BPM</label>
+                    <input type="range" id="bpmRange" min="40" max="120" step="5" value="60" oninput="updateSettings()">
+                </div>
+                
+                <hr style="border-color: #333; margin: 15px 0;">
+
                 <div class="control-group">
                     <label>⏱️ เวลาต่อยก: <span id="timeVal">3</span> นาที</label>
                     <input type="range" id="roundTimeInput" min="1" max="5" value="3" oninput="updateSettings()">
@@ -140,24 +174,14 @@
     </div>
 
     <script>
-        // --- 1. TRANSITION LOGIC (สมอง AI) ---
         const transitions = {
-            // Starters
             'START': ['1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
-
-            // Jab Series (1)
             '1': ['2', '2', 'body-2', '3', '5', 'slip-left', 'roll-under', '1'],
             '1-1': ['2', 'body-2', 'slip-left'],
-
-            // Cross Series (2) - โหลดซ้าย
             '2': ['3', '3', 'body-3', '5', 'roll-under', 'slip-right', 'pivot'],
             'body-2': ['3', '5', 'uppercut-left', 'slip-left'],
-
-            // Hook Series (3) - โหลดขวา
             '3': ['2', '6', 'body-2', 'roll-under', 'pivot'],
-            'body-3': ['2', '6', '5', '3', 'pivot'], // Tyson style (body-3 -> 3)
-
-            // Uppercuts & Defense
+            'body-3': ['2', '6', '5', '3', 'pivot'], 
             '5': ['2', '4', '3', 'roll-under'],
             '6': ['3', '5', 'weave'],
             'slip-left':  ['3', '5', 'body-3', 'pivot'],
@@ -168,11 +192,12 @@
             'drop':       ['uppercut-right', '3']
         };
 
-        // --- 2. CORE FUNCTIONS ---
-        function generateCombo(length = 4) {
+        function generateCombo(length = 3) { // Default ให้สั้นลง
             let combo = [];
             let currentMove = 'START';
-            let actualLength = Math.floor(Math.random() * (length - 2 + 1)) + 2;
+            
+            // Logic ใหม่: 70% ออก 2-3 ท่า (สั้น), 30% ออก 4 ท่า (ยาว)
+            let actualLength = Math.random() < 0.7 ? (Math.floor(Math.random() * 2) + 2) : 4; 
 
             for (let i = 0; i < actualLength; i++) {
                 let possibleMoves = transitions[currentMove] || transitions['START'];
@@ -180,7 +205,6 @@
                 
                 if (nextMove !== 'START') combo.push(nextMove);
                 
-                // Logic จัดการ key (แยก space, ไม่แยก hyphen)
                 if (nextMove.includes(' ') && !nextMove.includes('-')) {
                     let parts = nextMove.split(' ');
                     currentMove = parts[parts.length - 1];
@@ -188,40 +212,43 @@
                     currentMove = nextMove;
                 }
             }
-            // แปลง hyphen กลับเป็น space เพื่อให้อ่านออกเสียงถูกต้อง (เช่น slip-left -> slip left)
             return combo.join(" ").replace(/-/g, " ");
         }
 
-        // --- 3. STATE & UTILS ---
         let isTraining = false;
         let timeLeft = 180;
         let timerInterval = null;
+        let rhythmInterval = null;
         let wakeLock = null;
 
         const ui = {
             timer: document.getElementById('timer-display'),
             combo: document.getElementById('combo-display'),
+            visualBeat: document.getElementById('visual-beat'),
             btn: document.getElementById('main-btn'),
             status: document.getElementById('status-text'),
             timeInput: document.getElementById('roundTimeInput'),
             speedInput: document.getElementById('intervalRange'),
+            bpmInput: document.getElementById('bpmRange'),
+            rhythmToggle: document.getElementById('rhythmToggle'),
             timeVal: document.getElementById('timeVal'),
-            speedVal: document.getElementById('speedVal')
+            speedVal: document.getElementById('speedVal'),
+            bpmVal: document.getElementById('bpmVal')
         };
 
         function updateSettings() {
             if (!isTraining) {
-                // อัปเดตตัวเลข
                 ui.timeVal.innerText = ui.timeInput.value;
                 ui.speedVal.innerText = (ui.speedInput.value / 1000).toFixed(1);
+                ui.bpmVal.innerText = ui.bpmInput.value;
                 
-                // อัปเดตเวลาถอยหลัง
                 timeLeft = ui.timeInput.value * 60;
                 updateTimerDisplay();
 
-                // Save ลงเครื่อง (LocalStorage)
                 localStorage.setItem('boxing_time', ui.timeInput.value);
                 localStorage.setItem('boxing_speed', ui.speedInput.value);
+                localStorage.setItem('boxing_bpm', ui.bpmInput.value);
+                localStorage.setItem('boxing_rhythm', ui.rhythmToggle.checked);
             }
         }
 
@@ -234,27 +261,77 @@
         function loadSettings() {
             const sTime = localStorage.getItem('boxing_time');
             const sSpeed = localStorage.getItem('boxing_speed');
-            if (sTime) { ui.timeInput.value = sTime; }
-            if (sSpeed) { ui.speedInput.value = sSpeed; }
-            updateSettings(); // เรียกเพื่อให้ UI อัปเดตตามค่าที่โหลดมา
+            const sBPM = localStorage.getItem('boxing_bpm');
+            const sRhythm = localStorage.getItem('boxing_rhythm'); // คืนค่าเป็น String "true"/"false"
+            
+            if (sTime) ui.timeInput.value = sTime;
+            if (sSpeed) ui.speedInput.value = sSpeed;
+            if (sBPM) ui.bpmInput.value = sBPM;
+            if (sRhythm !== null) ui.rhythmToggle.checked = (sRhythm === 'true');
+            
+            updateSettings();
         }
 
-        // --- 4. RUN LOOP ---
+        // --- RHYTHM ENGINE (เสียงจังหวะ) ---
+        function startRhythm() {
+            if (!ui.rhythmToggle.checked) return;
+
+            const bpm = parseInt(ui.bpmInput.value);
+            const intervalMs = 60000 / bpm; // แปลง BPM เป็นมิลลิวินาที
+
+            // เล่นครั้งแรกทันที
+            playBeatSound();
+            animateBeat();
+
+            rhythmInterval = setInterval(() => {
+                playBeatSound();
+                animateBeat();
+            }, intervalMs);
+        }
+
+        function stopRhythm() {
+            clearInterval(rhythmInterval);
+        }
+
+        function playBeatSound() {
+            // สร้างเสียงตุ้บๆ (Kick Drum แบบ Cyberpunk)
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(60, ctx.currentTime); // เสียงต่ำ
+            osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1); // ลดต่ำลงเร็วๆ (Kick)
+            
+            gain.gain.setValueAtTime(0.3, ctx.currentTime); // ความดัง
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.1);
+        }
+
+        function animateBeat() {
+            // Effect วงกลมวูบวาบกลางจอ
+            ui.visualBeat.classList.remove('beat-active');
+            void ui.visualBeat.offsetWidth; // Trigger reflow
+            ui.visualBeat.classList.add('beat-active');
+        }
+
         async function runComboLoop() {
             if (!isTraining) return;
 
-            const comboText = generateCombo(3);
+            const comboText = generateCombo(); // สั้นยาวตาม Logic ใหม่
             ui.combo.innerText = comboText;
             
-            // Visual Flash (กระพริบจอเบาๆ)
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
 
-            // Audio Logic
             const msg = new SpeechSynthesisUtterance(comboText);
             msg.lang = 'en-US';
-            msg.rate = 1.1; 
-            msg.pitch = 0.6; // เสียงเข้ม
+            msg.rate = 1.2; 
+            msg.pitch = 0.6; 
             msg.volume = 1.0;
 
             msg.onend = function() {
@@ -267,33 +344,31 @@
             window.speechSynthesis.speak(msg);
         }
 
-        // --- 5. CONTROLS ---
         function toggleTraining() {
             if (!isTraining) {
-                // START
                 isTraining = true;
                 ui.btn.innerText = "STOP";
                 ui.btn.className = "btn-stop";
                 ui.status.innerText = "FIGHT!";
                 ui.status.style.color = "#ff2a2a";
                 
-                playTone(880); // Bell
+                playTone(880); 
                 requestWakeLock();
 
                 timeLeft = ui.timeInput.value * 60;
                 updateTimerDisplay();
 
-                // Timer Count
+                startRhythm(); // เริ่มเสียงจังหวะ
+
                 timerInterval = setInterval(() => {
                     timeLeft--;
                     updateTimerDisplay();
                     if (timeLeft <= 0) stopTraining();
                 }, 1000);
 
-                setTimeout(runComboLoop, 1000); // เริ่มสั่งหมัดหลัง 1 วิ
+                setTimeout(runComboLoop, 1000);
 
             } else {
-                // STOP
                 stopTraining();
             }
         }
@@ -301,6 +376,7 @@
         function stopTraining() {
             isTraining = false;
             clearInterval(timerInterval);
+            stopRhythm(); // หยุดเสียงจังหวะ
             window.speechSynthesis.cancel();
             
             ui.btn.innerText = "START ROUND";
@@ -309,15 +385,13 @@
             ui.status.style.color = "#666";
             ui.combo.innerText = "GOOD JOB";
             
-            playTone(880); // End Bell
+            playTone(880); 
             speakSimple("Time!");
 
-            // Reset
             updateSettings(); 
             if (wakeLock !== null) { wakeLock.release().then(() => wakeLock = null); }
         }
 
-        // Sound & WakeLock Helpers
         function playTone(freq) {
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
@@ -341,9 +415,7 @@
             try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
         }
 
-        // Init
         loadSettings();
-
     </script>
 </body>
 </html>
