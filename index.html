@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Boxing Coach Pro (Rhythm Edition)</title>
+    <title>Boxing Coach</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
         :root {
             --primary: #00ff88;
             --danger: #ff2a2a;
-            --accent: #00e5ff; /* สีฟ้าสำหรับจังหวะ */
+            --accent: #00e5ff;
             --bg: #111111;
             --card: #1e1e1e;
             --text: #ffffff;
@@ -75,26 +75,9 @@
             line-height: 1.1;
             font-weight: 600;
             padding: 0 10px;
-            z-index: 2;
+            z-index: 2; /* อยู่ชั้นบนสุด */
         }
         
-        /* วงกลมจังหวะ (Visual Beat) */
-        .beat-circle {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: var(--accent);
-            border-radius: 50%;
-            opacity: 0;
-            transform: scale(1);
-            transition: transform 0.1s, opacity 0.2s;
-            z-index: 1;
-        }
-        .beat-active {
-            opacity: 0.3;
-            transform: scale(15); /* ขยายวูบใหญ่ๆ */
-        }
-
         footer { margin-bottom: 20px; }
         
         button {
@@ -125,7 +108,6 @@
         label { display: block; font-size: 1.3rem; margin-bottom: 5px; color: #aaa; }
         label span { color: var(--primary); font-weight: bold; }
         
-        /* Toggle Switch สำหรับ Rhythm */
         .toggle-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .toggle-label { font-size: 1.5rem; color: var(--accent); }
         input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
@@ -142,7 +124,6 @@
         </header>
 
         <main>
-            <div class="beat-circle" id="visual-beat"></div>
             <div id="combo-display">TAP START</div>
         </main>
 
@@ -192,11 +173,9 @@
             'drop':       ['uppercut-right', '3']
         };
 
-        function generateCombo(length = 3) { // Default ให้สั้นลง
+        function generateCombo() {
             let combo = [];
             let currentMove = 'START';
-            
-            // Logic ใหม่: 70% ออก 2-3 ท่า (สั้น), 30% ออก 4 ท่า (ยาว)
             let actualLength = Math.random() < 0.7 ? (Math.floor(Math.random() * 2) + 2) : 4; 
 
             for (let i = 0; i < actualLength; i++) {
@@ -224,7 +203,6 @@
         const ui = {
             timer: document.getElementById('timer-display'),
             combo: document.getElementById('combo-display'),
-            visualBeat: document.getElementById('visual-beat'),
             btn: document.getElementById('main-btn'),
             status: document.getElementById('status-text'),
             timeInput: document.getElementById('roundTimeInput'),
@@ -262,7 +240,7 @@
             const sTime = localStorage.getItem('boxing_time');
             const sSpeed = localStorage.getItem('boxing_speed');
             const sBPM = localStorage.getItem('boxing_bpm');
-            const sRhythm = localStorage.getItem('boxing_rhythm'); // คืนค่าเป็น String "true"/"false"
+            const sRhythm = localStorage.getItem('boxing_rhythm');
             
             if (sTime) ui.timeInput.value = sTime;
             if (sSpeed) ui.speedInput.value = sSpeed;
@@ -272,20 +250,17 @@
             updateSettings();
         }
 
-        // --- RHYTHM ENGINE (เสียงจังหวะ) ---
+        // --- RHYTHM ENGINE (เสียงอย่างเดียว ไม่มีภาพ) ---
         function startRhythm() {
             if (!ui.rhythmToggle.checked) return;
 
             const bpm = parseInt(ui.bpmInput.value);
-            const intervalMs = 60000 / bpm; // แปลง BPM เป็นมิลลิวินาที
+            const intervalMs = 60000 / bpm;
 
-            // เล่นครั้งแรกทันที
-            playBeatSound();
-            animateBeat();
+            playBeatSound(); // เล่นทันที 1 ครั้ง
 
             rhythmInterval = setInterval(() => {
-                playBeatSound();
-                animateBeat();
+                playBeatSound(); // เล่นซ้ำไปเรื่อยๆ จนกว่าจะสั่งหยุด
             }, intervalMs);
         }
 
@@ -294,16 +269,15 @@
         }
 
         function playBeatSound() {
-            // สร้างเสียงตุ้บๆ (Kick Drum แบบ Cyberpunk)
             const ctx = new (window.AudioContext || window.webkitAudioContext)();
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(60, ctx.currentTime); // เสียงต่ำ
-            osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1); // ลดต่ำลงเร็วๆ (Kick)
+            osc.frequency.setValueAtTime(60, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
             
-            gain.gain.setValueAtTime(0.3, ctx.currentTime); // ความดัง
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
 
             osc.connect(gain);
@@ -312,19 +286,13 @@
             osc.stop(ctx.currentTime + 0.1);
         }
 
-        function animateBeat() {
-            // Effect วงกลมวูบวาบกลางจอ
-            ui.visualBeat.classList.remove('beat-active');
-            void ui.visualBeat.offsetWidth; // Trigger reflow
-            ui.visualBeat.classList.add('beat-active');
-        }
-
         async function runComboLoop() {
             if (!isTraining) return;
 
-            const comboText = generateCombo(); // สั้นยาวตาม Logic ใหม่
+            const comboText = generateCombo();
             ui.combo.innerText = comboText;
             
+            // เอฟเฟกต์กระพริบจอ (เหลือแค่นี้พอ ไม่บังจอ)
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
 
