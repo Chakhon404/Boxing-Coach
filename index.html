@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Boxing Coach (Pro Edition)</title>
+    <title>AI Boxing Coach</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,7 +17,7 @@
             --primary: #00ff88;
             --danger: #ff2a2a;
             --accent: #00e5ff;
-            --warning: #ffe600; /* สีเหลืองสำหรับท่าหลบ */
+            --warning: #ffe600;
             --bg: #111111;
             --card: #1e1e1e;
             --text: #ffffff;
@@ -88,18 +88,10 @@
             z-index: 2;
         }
 
-        /* --- ✨ CSS ใหม่สำหรับแยกสีท่ามวย --- */
-        .move-defensive { 
-            color: var(--warning); 
-            text-shadow: 0 0 15px rgba(255, 230, 0, 0.5); 
-        }
-        .move-body { 
-            color: var(--accent); 
-            text-shadow: 0 0 15px rgba(0, 229, 255, 0.5); 
-        }
-        .move-attack { 
-            color: #ffffff; 
-        }
+        /* Visual Cues */
+        .move-defensive { color: var(--warning); text-shadow: 0 0 15px rgba(255, 230, 0, 0.5); }
+        .move-body { color: var(--accent); text-shadow: 0 0 15px rgba(0, 229, 255, 0.5); }
+        .move-attack { color: #ffffff; }
 
         footer { 
             width: 100%; 
@@ -125,9 +117,7 @@
             flex-shrink: 0;
         }
         
-        /* ปุ่มสีเทาตอน Disabled (นับถอยหลัง) */
         button:disabled { background: #555; color: #aaa; cursor: not-allowed; box-shadow: none; }
-        
         .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0,255,136,0.4); }
         .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 20px rgba(255,42,42,0.4); }
         button:active { transform: scale(0.96); opacity: 0.9; }
@@ -173,35 +163,15 @@
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
 
         @media (orientation: landscape) and (max-height: 600px) {
-            .container {
-                flex-direction: row; 
-                align-items: center;
-                padding: 10px 40px; 
-                gap: 30px;
-            }
-            .display-area {
-                flex: 1.2;
-                align-items: flex-end; 
-                text-align: right;
-            }
-            footer {
-                flex: 1;
-                margin-bottom: 0;
-                justify-content: center;
-            }
+            .container { flex-direction: row; align-items: center; padding: 10px 40px; gap: 30px; }
+            .display-area { flex: 1.2; align-items: flex-end; text-align: right; }
+            footer { flex: 1; margin-bottom: 0; justify-content: center; }
             #timer-display { font-size: 5rem; text-align: right; width: 100%;}
             #combo-display { font-size: 3rem; text-align: right; width: 100%; }
             header { margin-top: 0; }
             main { margin-bottom: 0; justify-content: flex-end;}
             button { font-size: 1.8rem; padding: 15px; }
-            .settings-panel.open {
-                max-height: 150px; 
-                position: absolute; 
-                bottom: 10px;
-                right: 10px;
-                left: 10px;
-                z-index: 10;
-            }
+            .settings-panel.open { max-height: 150px; position: absolute; bottom: 10px; right: 10px; left: 10px; z-index: 10; }
         }
     </style>
 </head>
@@ -221,10 +191,7 @@
 
         <footer>
             <button id="main-btn" class="btn-start" onclick="toggleTraining()">START ROUND</button>
-            
-            <button id="settings-btn" class="btn-toggle-settings" onclick="toggleSettingsDrawer()">
-                ⚙️ SETTINGS
-            </button>
+            <button id="settings-btn" class="btn-toggle-settings" onclick="toggleSettingsDrawer()">⚙️ SETTINGS</button>
             
             <div class="settings-panel" id="settings-panel">
                 <div class="toggle-row">
@@ -249,8 +216,22 @@
     </div>
 
     <script>
+        // --- 1. Audio System (Optimized: Singleton Pattern) ---
+        // สร้าง Context เดียวใช้ตลอดชีพ
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function ensureAudioContext() {
+            // Browser จะ block audio ถ้าไม่มี user interaction
+            // ฟังก์ชันนี้จะเรียกตอนกดปุ่ม Start เพื่อปลุก Context
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // --- 2. Combo Logic (Weighted Probability) ---
         const transitions = {
-            'START': ['1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
+            // เพิ่ม '1' เข้าไปหลายตัว เพื่อเพิ่มโอกาสออกหมัดแย็บ (Jab)
+            'START': ['1', '1', '1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
             '1': ['2', '2', 'body-2', '3', '5', 'slip-left', 'roll-under', '1'],
             '1-1': ['2', 'body-2', 'slip-left'],
             '2': ['3', '3', 'body-3', '5', 'roll-under', 'slip-right', 'pivot'],
@@ -288,24 +269,19 @@
             return combo.join(" ").replace(/-/g, " ");
         }
 
-        // --- ✨ ฟังก์ชันใหม่: ใส่สีให้ท่ามวย ---
         function formatComboColors(text) {
             return text.split(" ").map(word => {
-                let className = 'move-attack'; // ค่าเริ่มต้น
-
-                // เช็คว่าเป็นท่าหลบหรือไม่ (เหลือง)
+                let className = 'move-attack';
                 if (['slip', 'roll', 'weave', 'pivot', 'drop'].some(x => word.toLowerCase().includes(x))) {
                     className = 'move-defensive';
-                }
-                // เช็คว่าเป็นท่าต่อยลำตัวหรือไม่ (ฟ้า)
-                else if (word.toLowerCase().includes('body')) {
+                } else if (word.toLowerCase().includes('body')) {
                     className = 'move-body';
                 }
-
                 return `<span class="${className}">${word}</span>`;
             }).join(" ");
         }
 
+        // --- 3. State & UI ---
         let isTraining = false;
         let timeLeft = 180;
         let timerInterval = null;
@@ -365,6 +341,7 @@
             updateSettings();
         }
 
+        // --- 4. Audio Control (Fixed) ---
         function startRhythm() {
             if (!ui.rhythmToggle.checked) return;
             const bpm = parseInt(ui.bpmInput.value);
@@ -378,26 +355,37 @@
         }
 
         function playBeatSound() {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
+            // ใช้ audioCtx ตัวเดิม ไม่สร้างใหม่
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(60, ctx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+            osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
             osc.connect(gain);
-            gain.connect(ctx.destination);
+            gain.connect(audioCtx.destination);
             osc.start();
-            osc.stop(ctx.currentTime + 0.1);
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playTone(freq) {
+            // ใช้ audioCtx ตัวเดิม
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 1.5);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.5);
         }
 
         async function runComboLoop() {
             if (!isTraining) return;
 
             const comboText = generateCombo();
-            
-            // ใช้ innerHTML แทน innerText เพื่อรองรับสี
             ui.combo.innerHTML = formatComboColors(comboText);
             
             document.body.style.backgroundColor = "#222"; 
@@ -419,24 +407,24 @@
             window.speechSynthesis.speak(msg);
         }
 
-        // --- ✨ Logic ใหม่: นับถอยหลังก่อนเริ่ม ---
+        // --- 5. Main Control Flow ---
         function toggleTraining() {
+            ensureAudioContext(); // ปลุก Audio Engine ทันทีที่แตะ
+
             if (!isTraining) {
-                // เก็บลิ้นชัก
                 ui.settingsPanel.classList.remove('open');
                 ui.settingsBtn.innerText = "⚙️ SETTINGS";
 
                 isTraining = true;
                 
-                // เริ่มโหมดเตรียมตัว (Get Ready)
+                // Get Ready Phase
                 ui.btn.innerText = "GET READY...";
-                ui.btn.className = "btn-stop"; // ใช้สีแดงเตือน
-                ui.btn.disabled = true; // ล็อกปุ่มไว้ก่อน
+                ui.btn.className = "btn-stop";
+                ui.btn.disabled = true;
 
                 let prepTime = 5;
                 ui.combo.innerText = prepTime;
                 
-                // ขยายตัวเลขให้นับถอยหลังสะใจ
                 const oldFontSize = ui.combo.style.fontSize;
                 ui.combo.style.fontSize = "8rem"; 
                 
@@ -446,12 +434,11 @@
                     prepTime--;
                     if(prepTime > 0) {
                         ui.combo.innerText = prepTime;
-                        playTone(440); // เสียงติ๊ดเบาๆ
+                        playTone(440);
                     } else {
-                        // จบการนับถอยหลัง -> เริ่มยกจริง
                         clearInterval(prepInterval);
-                        ui.combo.style.fontSize = oldFontSize; // คืนค่าขนาดตัวอักษร
-                        startRoundActual(); // ** ไปเริ่มยกจริง **
+                        ui.combo.style.fontSize = oldFontSize;
+                        startRoundActual(); 
                     }
                 }, 1000);
 
@@ -460,20 +447,18 @@
             }
         }
 
-        // ฟังก์ชันเริ่มยกจริง (แยกออกมา)
         function startRoundActual() {
-            ui.btn.disabled = false; // ปลดล็อกปุ่ม
+            ui.btn.disabled = false;
             ui.btn.innerText = "STOP";
             ui.status.innerText = "FIGHT!";
             ui.status.style.color = "#ff2a2a";
             
-            playTone(880); // ระฆังเริ่ม
+            playTone(880); 
             requestWakeLock();
 
             timeLeft = ui.timeInput.value * 60;
             updateTimerDisplay();
             
-            // เริ่มเสียงจังหวะตรงนี้ (จะไม่ดังตอนนับถอยหลัง)
             startRhythm();
 
             timerInterval = setInterval(() => {
@@ -497,26 +482,13 @@
             ui.status.innerText = "REST";
             ui.status.style.color = "#666";
             ui.combo.innerText = "GOOD JOB";
-            ui.combo.style.fontSize = ""; // Reset font size just in case
+            ui.combo.style.fontSize = ""; 
             
             playTone(880); 
             speakSimple("Time!");
 
             updateSettings(); 
             if (wakeLock !== null) { wakeLock.release().then(() => wakeLock = null); }
-        }
-
-        function playTone(freq) {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(freq, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 1.5);
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.start();
-            osc.stop(ctx.currentTime + 1.5);
         }
 
         function speakSimple(text) {
