@@ -1,6 +1,6 @@
 {
-  "name": "AI Tyson Coach",
-  "short_name": "TysonCoach",
+  "name": "AI Boxing Coach",
+  "short_name": "BoxingCoach",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#111111",
@@ -8,7 +8,7 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3344/3344279.png",
+      "src": "icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
