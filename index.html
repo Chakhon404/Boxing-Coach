@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Boxing Coach</title>
+    <title>AI Boxing Coach (Pro Edition)</title>
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -17,6 +17,7 @@
             --primary: #00ff88;
             --danger: #ff2a2a;
             --accent: #00e5ff;
+            --warning: #ffe600; /* สีเหลืองสำหรับท่าหลบ */
             --bg: #111111;
             --card: #1e1e1e;
             --text: #ffffff;
@@ -28,7 +29,7 @@
             font-family: 'Teko', sans-serif;
             margin: 0;
             height: 100vh;
-            overflow: hidden; /* ห้ามเลื่อนทั้งหน้า */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             transition: background-color 0.1s;
@@ -37,16 +38,15 @@
         .container {
             flex: 1;
             display: flex;
-            flex-direction: column; /* แนวตั้งเป็นหลัก */
+            flex-direction: column;
             justify-content: space-between;
             padding: 20px;
             width: 100%;
             box-sizing: border-box;
-            max-width: 800px; /* ขยายความกว้างให้รองรับแนวนอน */
+            max-width: 800px;
             margin: 0 auto;
         }
 
-        /* กลุ่มแสดงผล (เวลา + ท่า) */
         .display-area {
             flex: 1;
             display: flex;
@@ -87,8 +87,20 @@
             padding: 0 10px;
             z-index: 2;
         }
-        
-        /* ส่วนควบคุม (ปุ่ม + ลิ้นชัก) */
+
+        /* --- ✨ CSS ใหม่สำหรับแยกสีท่ามวย --- */
+        .move-defensive { 
+            color: var(--warning); 
+            text-shadow: 0 0 15px rgba(255, 230, 0, 0.5); 
+        }
+        .move-body { 
+            color: var(--accent); 
+            text-shadow: 0 0 15px rgba(0, 229, 255, 0.5); 
+        }
+        .move-attack { 
+            color: #ffffff; 
+        }
+
         footer { 
             width: 100%; 
             margin-bottom: 10px;
@@ -112,6 +124,10 @@
             margin-bottom: 10px;
             flex-shrink: 0;
         }
+        
+        /* ปุ่มสีเทาตอน Disabled (นับถอยหลัง) */
+        button:disabled { background: #555; color: #aaa; cursor: not-allowed; box-shadow: none; }
+        
         .btn-start { background: var(--primary); color: #000; box-shadow: 0 0 20px rgba(0,255,136,0.4); }
         .btn-stop { background: var(--danger); color: #fff; box-shadow: 0 0 20px rgba(255,42,42,0.4); }
         button:active { transform: scale(0.96); opacity: 0.9; }
@@ -138,8 +154,8 @@
         }
 
         .settings-panel.open {
-            max-height: 60vh; /* ให้สูงไม่เกิน 60% ของจอ */
-            overflow-y: auto; /* ถ้าล้นให้เลื่อนได้ */
+            max-height: 60vh; 
+            overflow-y: auto;
             opacity: 1;
             margin-top: 15px;
             padding: 20px;
@@ -156,44 +172,31 @@
         input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
 
-        /* --- 📱 กฎพิเศษสำหรับแนวนอน (Landscape Mode) --- */
         @media (orientation: landscape) and (max-height: 600px) {
             .container {
-                flex-direction: row; /* เปลี่ยนเป็นเรียงซ้าย-ขวา */
+                flex-direction: row; 
                 align-items: center;
-                padding: 10px 40px; /* เพิ่มขอบข้าง */
+                padding: 10px 40px; 
                 gap: 30px;
             }
-
-            /* ฝั่งซ้าย: แสดงเวลาและท่า */
             .display-area {
                 flex: 1.2;
-                align-items: flex-end; /* ชิดขวานิดนึงให้ใกล้ปุ่ม */
+                align-items: flex-end; 
                 text-align: right;
             }
-
-            /* ฝั่งขวา: ปุ่มและตั้งค่า */
             footer {
                 flex: 1;
                 margin-bottom: 0;
                 justify-content: center;
             }
-
-            /* ปรับขนาดตัวอักษรให้เล็กลงหน่อย เพื่อไม่ให้ล้น */
             #timer-display { font-size: 5rem; text-align: right; width: 100%;}
             #combo-display { font-size: 3rem; text-align: right; width: 100%; }
             header { margin-top: 0; }
             main { margin-bottom: 0; justify-content: flex-end;}
-
-            button {
-                font-size: 1.8rem;
-                padding: 15px;
-            }
-
-            /* ลิ้นชักตั้งค่าในแนวนอน */
+            button { font-size: 1.8rem; padding: 15px; }
             .settings-panel.open {
-                max-height: 150px; /* จำกัดความสูง */
-                position: absolute; /* ลอยขึ้นมา */
+                max-height: 150px; 
+                position: absolute; 
                 bottom: 10px;
                 right: 10px;
                 left: 10px;
@@ -285,6 +288,24 @@
             return combo.join(" ").replace(/-/g, " ");
         }
 
+        // --- ✨ ฟังก์ชันใหม่: ใส่สีให้ท่ามวย ---
+        function formatComboColors(text) {
+            return text.split(" ").map(word => {
+                let className = 'move-attack'; // ค่าเริ่มต้น
+
+                // เช็คว่าเป็นท่าหลบหรือไม่ (เหลือง)
+                if (['slip', 'roll', 'weave', 'pivot', 'drop'].some(x => word.toLowerCase().includes(x))) {
+                    className = 'move-defensive';
+                }
+                // เช็คว่าเป็นท่าต่อยลำตัวหรือไม่ (ฟ้า)
+                else if (word.toLowerCase().includes('body')) {
+                    className = 'move-body';
+                }
+
+                return `<span class="${className}">${word}</span>`;
+            }).join(" ");
+        }
+
         let isTraining = false;
         let timeLeft = 180;
         let timerInterval = null;
@@ -309,11 +330,7 @@
 
         function toggleSettingsDrawer() {
             ui.settingsPanel.classList.toggle('open');
-            if (ui.settingsPanel.classList.contains('open')) {
-                ui.settingsBtn.innerText = "🔼 HIDE";
-            } else {
-                ui.settingsBtn.innerText = "⚙️ SETTINGS";
-            }
+            ui.settingsBtn.innerText = ui.settingsPanel.classList.contains('open') ? "🔼 HIDE" : "⚙️ SETTINGS";
         }
 
         function updateSettings() {
@@ -321,10 +338,8 @@
                 ui.timeVal.innerText = ui.timeInput.value;
                 ui.speedVal.innerText = (ui.speedInput.value / 1000).toFixed(1);
                 ui.bpmVal.innerText = ui.bpmInput.value;
-                
                 timeLeft = ui.timeInput.value * 60;
                 updateTimerDisplay();
-
                 localStorage.setItem('boxing_time', ui.timeInput.value);
                 localStorage.setItem('boxing_speed', ui.speedInput.value);
                 localStorage.setItem('boxing_bpm', ui.bpmInput.value);
@@ -343,12 +358,10 @@
             const sSpeed = localStorage.getItem('boxing_speed');
             const sBPM = localStorage.getItem('boxing_bpm');
             const sRhythm = localStorage.getItem('boxing_rhythm');
-            
             if (sTime) ui.timeInput.value = sTime;
             if (sSpeed) ui.speedInput.value = sSpeed;
             if (sBPM) ui.bpmInput.value = sBPM;
             if (sRhythm !== null) ui.rhythmToggle.checked = (sRhythm === 'true');
-            
             updateSettings();
         }
 
@@ -383,7 +396,9 @@
             if (!isTraining) return;
 
             const comboText = generateCombo();
-            ui.combo.innerText = comboText;
+            
+            // ใช้ innerHTML แทน innerText เพื่อรองรับสี
+            ui.combo.innerHTML = formatComboColors(comboText);
             
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
@@ -404,36 +419,70 @@
             window.speechSynthesis.speak(msg);
         }
 
+        // --- ✨ Logic ใหม่: นับถอยหลังก่อนเริ่ม ---
         function toggleTraining() {
             if (!isTraining) {
+                // เก็บลิ้นชัก
                 ui.settingsPanel.classList.remove('open');
                 ui.settingsBtn.innerText = "⚙️ SETTINGS";
 
                 isTraining = true;
-                ui.btn.innerText = "STOP";
-                ui.btn.className = "btn-stop";
-                ui.status.innerText = "FIGHT!";
-                ui.status.style.color = "#ff2a2a";
                 
-                playTone(880); 
-                requestWakeLock();
+                // เริ่มโหมดเตรียมตัว (Get Ready)
+                ui.btn.innerText = "GET READY...";
+                ui.btn.className = "btn-stop"; // ใช้สีแดงเตือน
+                ui.btn.disabled = true; // ล็อกปุ่มไว้ก่อน
 
-                timeLeft = ui.timeInput.value * 60;
-                updateTimerDisplay();
+                let prepTime = 5;
+                ui.combo.innerText = prepTime;
+                
+                // ขยายตัวเลขให้นับถอยหลังสะใจ
+                const oldFontSize = ui.combo.style.fontSize;
+                ui.combo.style.fontSize = "8rem"; 
+                
+                speakSimple("Get ready");
 
-                startRhythm();
-
-                timerInterval = setInterval(() => {
-                    timeLeft--;
-                    updateTimerDisplay();
-                    if (timeLeft <= 0) stopTraining();
+                let prepInterval = setInterval(() => {
+                    prepTime--;
+                    if(prepTime > 0) {
+                        ui.combo.innerText = prepTime;
+                        playTone(440); // เสียงติ๊ดเบาๆ
+                    } else {
+                        // จบการนับถอยหลัง -> เริ่มยกจริง
+                        clearInterval(prepInterval);
+                        ui.combo.style.fontSize = oldFontSize; // คืนค่าขนาดตัวอักษร
+                        startRoundActual(); // ** ไปเริ่มยกจริง **
+                    }
                 }, 1000);
-
-                setTimeout(runComboLoop, 1000);
 
             } else {
                 stopTraining();
             }
+        }
+
+        // ฟังก์ชันเริ่มยกจริง (แยกออกมา)
+        function startRoundActual() {
+            ui.btn.disabled = false; // ปลดล็อกปุ่ม
+            ui.btn.innerText = "STOP";
+            ui.status.innerText = "FIGHT!";
+            ui.status.style.color = "#ff2a2a";
+            
+            playTone(880); // ระฆังเริ่ม
+            requestWakeLock();
+
+            timeLeft = ui.timeInput.value * 60;
+            updateTimerDisplay();
+            
+            // เริ่มเสียงจังหวะตรงนี้ (จะไม่ดังตอนนับถอยหลัง)
+            startRhythm();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay();
+                if (timeLeft <= 0) stopTraining();
+            }, 1000);
+
+            setTimeout(runComboLoop, 1000);
         }
 
         function stopTraining() {
@@ -442,11 +491,13 @@
             stopRhythm();
             window.speechSynthesis.cancel();
             
+            ui.btn.disabled = false;
             ui.btn.innerText = "START ROUND";
             ui.btn.className = "btn-start";
             ui.status.innerText = "REST";
             ui.status.style.color = "#666";
             ui.combo.innerText = "GOOD JOB";
+            ui.combo.style.fontSize = ""; // Reset font size just in case
             
             playTone(880); 
             speakSimple("Time!");
