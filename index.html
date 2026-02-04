@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Boxing Coach</title>
+    <title>Boxing Coach</title>
     
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#111111">
+    
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3344/3344279.png">
     <link href="https://fonts.googleapis.com/css2?family=Teko:wght@300;600&display=swap" rel="stylesheet">
 
@@ -88,7 +90,7 @@
             z-index: 2;
         }
 
-        /* Visual Cues */
+        /* Visual Cues Classes */
         .move-defensive { color: var(--warning); text-shadow: 0 0 15px rgba(255, 230, 0, 0.5); }
         .move-body { color: var(--accent); text-shadow: 0 0 15px rgba(0, 229, 255, 0.5); }
         .move-attack { color: #ffffff; }
@@ -162,6 +164,7 @@
         input[type="checkbox"] { width: 25px; height: 25px; accent-color: var(--accent); }
         input[type=range] { width: 100%; accent-color: var(--primary); height: 30px; cursor: pointer; }
 
+        /* Landscape Mode Fix */
         @media (orientation: landscape) and (max-height: 600px) {
             .container { flex-direction: row; align-items: center; padding: 10px 40px; gap: 30px; }
             .display-area { flex: 1.2; align-items: flex-end; text-align: right; }
@@ -225,87 +228,24 @@
             }
         }
 
-        // --- 2. Combo Logic (Weighted Probability) ---
+        // --- 2. Combo Logic (Mike Tyson Style - Fixed Keys) ---
         const transitions = {
-            // --- STARTERS: เน้นเข้าทำดุดัน ---
-            'START': [
-                '1-1',          // แย็บเปิดทางพุ่งเข้า
-                '1 body-2',     // แย็บแล้วทิ่มท้อง
-                'slip-left', 'slip-right', // โยกเข้าหา
-                'roll-under',   // มุดเข้าหา
-                '1 2 3',        // ชุดพื้นฐาน (แก้เป็นเว้นวรรค)
-                'drop'          // ย่อหลอก
-            ], 
-
-            // --- JAB (1) ---
-            '1': [
-                '2', 'slip-left', 'roll-under', 
-                'body-2',      
-                '5'            // แย็บ-เสยซ้าย
-            ],
-            '1-1': ['2', 'body-2', 'drop', 'pivot'], 
-
-            // --- CROSS (2) ---
-            '2': [
-                '3', 'roll-under', 
-                'body-3',          
-                'slip-right',
-                'pivot'        // ต่อยขวาแล้วฉาก
-            ],
-
-            // --- BODY ATTACKS (TYSON SIGNATURE) ---
-            'body-2': [ // ต่อยท้องขวา (เบอร์ 7)
-                '6',             // -> ขึ้น 6 (ขวาเสย) *** ท่าไม้ตาย ***
-                '4',             // -> ขึ้น 4 (ขวาฮุก)
-                '3',             // สลับซ้าย
-                'roll-under'     // ต่อยแล้วมุด
-            ],
-
-            'body-3': [ // ต่อยท้องซ้าย (เบอร์ 8)
-                '5',             // -> ขึ้น 5 (ซ้ายเสย)
-                '3',             // -> ขึ้น 3 (ซ้ายฮุก)
-                '2',             
-                'pivot',         
-                'roll-under'     
-            ],
-
-            // --- POWER PUNCHES ---
-            '3': [ // ฮุกซ้าย
-                'body-3',        // Double Hook (บน-ล่าง)
-                '2', 
-                'roll-under', 
-                '5'
-            ],
-            '4': ['3', 'roll-under', 'body-3'], // ฮุกขวา
-            
-            '5': [ // อัปเปอร์คัทซ้าย
-                '4',             
-                '3',             
-                'body-3'         
-            ],
-            
-            '6': [ // อัปเปอร์คัทขวา
-                '3',             
-                '4',             
-                'roll-under'
-            ],
-
-            // --- PEEK-A-BOO DEFENSE ---
-            'slip-left':  ['5', '3', 'body-3', 'pivot'],       
-            'slip-right': ['6', '2', 'body-2'],       
-            
-            // **Spring from Roll**: แก้เป็นเว้นวรรค (Space) เพื่อให้ Logic ทำงานต่อได้
-            'roll-under': [
-                '3 2',           // มุด-ซ้าย-ขวา (Logic จะจับ '2' เป็นท่าต่อไป)
-                '5 4',           // มุด-เสยซ้าย-ฮุกขวา (Logic จะจับ '4' เป็นท่าต่อไป)
-                '6 3',           // มุด-เสยขวา-ฮุกซ้าย (Logic จะจับ '3' เป็นท่าต่อไป)
-                'body-3',        // มุด-ทิ่มท้อง
-                'pivot'          // มุดแล้วฉากหนี
-            ],
-            
+            'START': ['1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under', '1 2 3', 'drop'], 
+            '1': ['2', 'slip-left', 'roll-under', 'body-2', '5'],
+            '1-1': ['2', 'body-2', 'drop', 'pivot'],
+            '2': ['3', 'roll-under', 'body-3', 'slip-right', 'pivot'],
+            'body-2': ['6', '4', '3', 'roll-under'],
+            'body-3': ['5', '3', '2', 'pivot', 'roll-under'],
+            '3': ['body-3', '2', 'roll-under', '5'],
+            '4': ['3', 'roll-under', 'body-3'],
+            '5': ['4', '3', 'body-3'],
+            '6': ['3', '4', 'roll-under'],
+            'slip-left':  ['5', '3', 'body-3', 'pivot'],
+            'slip-right': ['6', '2', 'body-2'],
+            'roll-under': ['3 2', '5 4', '6 3', 'body-3', 'pivot'], // Space separated for logic
             'weave':      ['3', '2'],
-            'pivot':      ['2', '6', '1 2'],  // ฉากแล้วสวนทันที
-            'drop':       ['5', '6', '3']     // ย่อแล้วระเบิดขึ้น
+            'pivot':      ['2', '6', '1 2'],
+            'drop':       ['5', '6', '3']
         };
 
         function generateCombo() {
@@ -319,14 +259,15 @@
                 
                 if (nextMove !== 'START') combo.push(nextMove);
                 
+                // Logic เพื่อหาท่าถัดไป (Split Space)
                 if (nextMove.includes(' ') && !nextMove.includes('-')) {
                     let parts = nextMove.split(' ');
-                    currentMove = parts[parts.length - 1];
+                    currentMove = parts[parts.length - 1]; // เอาตัวสุดท้ายเป็น Key ถัดไป
                 } else {
                     currentMove = nextMove;
                 }
             }
-            // แก้ไข 1: ไม่ลบขีดกลางที่นี่ เพื่อให้ formatComboColors เห็นคำเต็มๆ
+            // Return raw string (ยังไม่ลบขีดกลาง เพื่อให้ formatComboColors ทำงานถูก)
             return combo.join(" ");
         }
 
@@ -339,7 +280,7 @@
                     className = 'move-body';
                 }
                 
-                // แก้ไข 2: ลบขีดกลางเฉพาะตอนจะแสดงผล (slip-right -> slip right)
+                // ลบขีดกลางเฉพาะตอนแสดงผลบนจอ (slip-right -> slip right)
                 const displayText = word.replace(/-/g, " ");
                 return `<span class="${className}">${displayText}</span>`;
             }).join(" ");
@@ -405,7 +346,7 @@
             updateSettings();
         }
 
-        // --- 4. Audio Control (Fixed) ---
+        // --- 4. Audio Control ---
         function startRhythm() {
             if (!ui.rhythmToggle.checked) return;
             const bpm = parseInt(ui.bpmInput.value);
@@ -447,13 +388,13 @@
         async function runComboLoop() {
             if (!isTraining) return;
 
-            const comboText = generateCombo(); // รับค่ามาแบบมีขีดกลาง (slip-right)
-            ui.combo.innerHTML = formatComboColors(comboText); // แสดงผล (slip right) และใส่สี
+            const comboText = generateCombo();
+            ui.combo.innerHTML = formatComboColors(comboText);
             
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
 
-            // แก้ไข 3: ลบขีดกลางออกก่อนส่งให้ AI พูด (slip-right -> slip right)
+            // ลบขีดกลางออกก่อนส่งให้ AI พูด (slip-right -> slip right)
             const speechText = comboText.replace(/-/g, " "); 
             const msg = new SpeechSynthesisUtterance(speechText);
             
@@ -482,13 +423,13 @@
 
                 isTraining = true;
                 
+                // Get Ready Phase
                 ui.btn.innerText = "GET READY...";
                 ui.btn.className = "btn-stop";
                 ui.btn.disabled = true;
 
                 let prepTime = 5;
                 ui.combo.innerText = prepTime;
-                
                 const oldFontSize = ui.combo.style.fontSize;
                 ui.combo.style.fontSize = "8rem"; 
                 
@@ -563,6 +504,15 @@
 
         async function requestWakeLock() {
             try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+
+        // --- 6. PWA Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('Service Worker registered!'))
+                    .catch(err => console.log('Service Worker failed:', err));
+            });
         }
 
         loadSettings();
