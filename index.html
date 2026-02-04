@@ -227,21 +227,85 @@
 
         // --- 2. Combo Logic (Weighted Probability) ---
         const transitions = {
-            'START': ['1', '1', '1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
-            '1': ['2', '2', 'body-2', '3', '5', 'slip-left', 'roll-under', '1'],
-            '1-1': ['2', 'body-2', 'slip-left'],
-            '2': ['3', '3', 'body-3', '5', 'roll-under', 'slip-right', 'pivot'],
-            'body-2': ['3', '5', 'uppercut-left', 'slip-left'],
-            '3': ['2', '6', 'body-2', 'roll-under', 'pivot'],
-            'body-3': ['2', '6', '5', '3', 'pivot'], 
-            '5': ['2', '4', '3', 'roll-under'],
-            '6': ['3', '5', 'weave'],
-            'slip-left':  ['3', '5', 'body-3', 'pivot'],
-            'slip-right': ['2', '6', 'body-2'],
-            'roll-under': ['3', '2', 'pivot', '5'],
-            'weave':      ['2', '3'],
-            'pivot':      ['2', '1-2', '6'],
-            'drop':       ['uppercut-right', '3']
+            // --- STARTERS: เน้นเข้าทำดุดัน ---
+            'START': [
+                '1-1',          // แย็บเปิดทางพุ่งเข้า
+                '1 body-2',     // แย็บแล้วทิ่มท้อง
+                'slip-left', 'slip-right', // โยกเข้าหา
+                'roll-under',   // มุดเข้าหา
+                '1 2 3',        // ชุดพื้นฐาน (แก้เป็นเว้นวรรค)
+                'drop'          // ย่อหลอก
+            ], 
+
+            // --- JAB (1) ---
+            '1': [
+                '2', 'slip-left', 'roll-under', 
+                'body-2',      
+                '5'            // แย็บ-เสยซ้าย
+            ],
+            '1-1': ['2', 'body-2', 'drop', 'pivot'], 
+
+            // --- CROSS (2) ---
+            '2': [
+                '3', 'roll-under', 
+                'body-3',          
+                'slip-right',
+                'pivot'        // ต่อยขวาแล้วฉาก
+            ],
+
+            // --- BODY ATTACKS (TYSON SIGNATURE) ---
+            'body-2': [ // ต่อยท้องขวา (เบอร์ 7)
+                '6',             // -> ขึ้น 6 (ขวาเสย) *** ท่าไม้ตาย ***
+                '4',             // -> ขึ้น 4 (ขวาฮุก)
+                '3',             // สลับซ้าย
+                'roll-under'     // ต่อยแล้วมุด
+            ],
+
+            'body-3': [ // ต่อยท้องซ้าย (เบอร์ 8)
+                '5',             // -> ขึ้น 5 (ซ้ายเสย)
+                '3',             // -> ขึ้น 3 (ซ้ายฮุก)
+                '2',             
+                'pivot',         
+                'roll-under'     
+            ],
+
+            // --- POWER PUNCHES ---
+            '3': [ // ฮุกซ้าย
+                'body-3',        // Double Hook (บน-ล่าง)
+                '2', 
+                'roll-under', 
+                '5'
+            ],
+            '4': ['3', 'roll-under', 'body-3'], // ฮุกขวา
+            
+            '5': [ // อัปเปอร์คัทซ้าย
+                '4',             
+                '3',             
+                'body-3'         
+            ],
+            
+            '6': [ // อัปเปอร์คัทขวา
+                '3',             
+                '4',             
+                'roll-under'
+            ],
+
+            // --- PEEK-A-BOO DEFENSE ---
+            'slip-left':  ['5', '3', 'body-3', 'pivot'],       
+            'slip-right': ['6', '2', 'body-2'],       
+            
+            // **Spring from Roll**: แก้เป็นเว้นวรรค (Space) เพื่อให้ Logic ทำงานต่อได้
+            'roll-under': [
+                '3 2',           // มุด-ซ้าย-ขวา (Logic จะจับ '2' เป็นท่าต่อไป)
+                '5 4',           // มุด-เสยซ้าย-ฮุกขวา (Logic จะจับ '4' เป็นท่าต่อไป)
+                '6 3',           // มุด-เสยขวา-ฮุกซ้าย (Logic จะจับ '3' เป็นท่าต่อไป)
+                'body-3',        // มุด-ทิ่มท้อง
+                'pivot'          // มุดแล้วฉากหนี
+            ],
+            
+            'weave':      ['3', '2'],
+            'pivot':      ['2', '6', '1 2'],  // ฉากแล้วสวนทันที
+            'drop':       ['5', '6', '3']     // ย่อแล้วระเบิดขึ้น
         };
 
         function generateCombo() {
