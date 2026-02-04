@@ -217,12 +217,9 @@
 
     <script>
         // --- 1. Audio System (Optimized: Singleton Pattern) ---
-        // สร้าง Context เดียวใช้ตลอดชีพ
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
         function ensureAudioContext() {
-            // Browser จะ block audio ถ้าไม่มี user interaction
-            // ฟังก์ชันนี้จะเรียกตอนกดปุ่ม Start เพื่อปลุก Context
             if (audioCtx.state === 'suspended') {
                 audioCtx.resume();
             }
@@ -230,7 +227,6 @@
 
         // --- 2. Combo Logic (Weighted Probability) ---
         const transitions = {
-            // เพิ่ม '1' เข้าไปหลายตัว เพื่อเพิ่มโอกาสออกหมัดแย็บ (Jab)
             'START': ['1', '1', '1', '1', '1-2', '1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under'], 
             '1': ['2', '2', 'body-2', '3', '5', 'slip-left', 'roll-under', '1'],
             '1-1': ['2', 'body-2', 'slip-left'],
@@ -266,7 +262,8 @@
                     currentMove = nextMove;
                 }
             }
-            return combo.join(" ").replace(/-/g, " ");
+            // แก้ไข 1: ไม่ลบขีดกลางที่นี่ เพื่อให้ formatComboColors เห็นคำเต็มๆ
+            return combo.join(" ");
         }
 
         function formatComboColors(text) {
@@ -277,7 +274,10 @@
                 } else if (word.toLowerCase().includes('body')) {
                     className = 'move-body';
                 }
-                return `<span class="${className}">${word}</span>`;
+                
+                // แก้ไข 2: ลบขีดกลางเฉพาะตอนจะแสดงผล (slip-right -> slip right)
+                const displayText = word.replace(/-/g, " ");
+                return `<span class="${className}">${displayText}</span>`;
             }).join(" ");
         }
 
@@ -355,7 +355,6 @@
         }
 
         function playBeatSound() {
-            // ใช้ audioCtx ตัวเดิม ไม่สร้างใหม่
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'sine';
@@ -370,7 +369,6 @@
         }
 
         function playTone(freq) {
-            // ใช้ audioCtx ตัวเดิม
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
             osc.type = 'triangle';
@@ -385,13 +383,16 @@
         async function runComboLoop() {
             if (!isTraining) return;
 
-            const comboText = generateCombo();
-            ui.combo.innerHTML = formatComboColors(comboText);
+            const comboText = generateCombo(); // รับค่ามาแบบมีขีดกลาง (slip-right)
+            ui.combo.innerHTML = formatComboColors(comboText); // แสดงผล (slip right) และใส่สี
             
             document.body.style.backgroundColor = "#222"; 
             setTimeout(() => { document.body.style.backgroundColor = "#111"; }, 150);
 
-            const msg = new SpeechSynthesisUtterance(comboText);
+            // แก้ไข 3: ลบขีดกลางออกก่อนส่งให้ AI พูด (slip-right -> slip right)
+            const speechText = comboText.replace(/-/g, " "); 
+            const msg = new SpeechSynthesisUtterance(speechText);
+            
             msg.lang = 'en-US';
             msg.rate = 1.2; 
             msg.pitch = 0.6; 
@@ -409,7 +410,7 @@
 
         // --- 5. Main Control Flow ---
         function toggleTraining() {
-            ensureAudioContext(); // ปลุก Audio Engine ทันทีที่แตะ
+            ensureAudioContext(); 
 
             if (!isTraining) {
                 ui.settingsPanel.classList.remove('open');
@@ -417,7 +418,6 @@
 
                 isTraining = true;
                 
-                // Get Ready Phase
                 ui.btn.innerText = "GET READY...";
                 ui.btn.className = "btn-stop";
                 ui.btn.disabled = true;
