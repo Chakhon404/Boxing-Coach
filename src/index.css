@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+input[type="range"] {
+  accent-color: #00ff88;
+  cursor: pointer;
+}
+
+input[type="checkbox"] {
+  accent-color: #00e5ff;
+}
