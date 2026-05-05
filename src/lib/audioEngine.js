@@ -38,6 +38,8 @@ let audioCtx = null;
 const audioBuffers = {};
 const loaded = new Set();
 
+let activeSources = new Set();
+
 function getContext() {
   if (!audioCtx || audioCtx.state === 'suspended') {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -49,6 +51,16 @@ function resumeContext() {
   const ctx = getContext();
   if (ctx.state === 'suspended') ctx.resume();
   return ctx;
+}
+
+export function stopAllAudio() {
+  activeSources.forEach(src => {
+    try { src.stop(); } catch (e) {}
+  });
+  activeSources.clear();
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
 }
 
 function playSynthTone(freq, duration = 0.15, type = 'sine', volume = 0.3) {
@@ -95,8 +107,13 @@ function playBuffer(buffer) {
     gain.gain.setValueAtTime(0.8, ctx.currentTime);
     source.connect(gain);
     gain.connect(ctx.destination);
-    source.onended = () => resolve(true);
+    activeSources.add(source);
+    source.onended = () => {
+      activeSources.delete(source);
+      resolve(true);
+    };
     source.onerror = (e) => {
+      activeSources.delete(source);
       console.warn(`[audioEngine] Playback error:`, e);
       resolve(false);
     };
@@ -107,6 +124,7 @@ function playBuffer(buffer) {
 function speak(text, rate = 1.2, pitch = 0.6) {
   return new Promise((resolve) => {
     if (!window.speechSynthesis) { resolve(); return; }
+    window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = 'en-US';
     msg.rate = rate;
@@ -199,14 +217,16 @@ export async function playVoiceSFX(name) {
 }
 
 export function playBellStart() {
+  stopAllAudio();
   loadAudioBuffer(BELL_SFX.START).then(buf => {
-    if (!playBuffer(buf)) playVoiceSFX('FIGHT');
+    if (!buf || !playBuffer(buf)) playVoiceSFX('FIGHT');
   });
 }
 
 export function playBellEnd() {
+  stopAllAudio();
   loadAudioBuffer(BELL_SFX.END).then(buf => {
-    if (!playBuffer(buf)) playVoiceSFX('TIME');
+    if (!buf || !playBuffer(buf)) playVoiceSFX('TIME');
   });
 }
 
@@ -216,9 +236,7 @@ export function speakSimple(text) { speak(text, 1, 1); }
 
 export async function preloadAll() {
   const allFiles = [
-    // Move sounds
     ...Object.values(MOVE_AUDIO_MAP).map(name => `/sounds/moves/${name}`),
-    // Bell sounds
     BELL_SFX.START,
     BELL_SFX.END,
   ];
