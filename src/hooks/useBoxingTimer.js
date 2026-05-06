@@ -84,17 +84,21 @@ export function useBoxingTimer({ roundTime, speed, bpm, rhythmEnabled, totalRoun
     setIsCountingDown(true);
     setStatus('GET READY');
     playVoiceSFX('GET_READY');
-    let prep = 5;
+    
+    const startTime = Date.now();
+    const duration = 5000;
 
     const tick = () => {
-      prep--;
-      if (prep > 0) {
-        playCountdown();
-      } else {
+      const elapsed = Date.now() - startTime;
+      const prep = Math.ceil((duration - elapsed) / 1000);
+      
+      if (prep <= 0) {
         clearInterval(countdownRef.current);
         countdownRef.current = null;
         setIsCountingDown(false);
         onComplete();
+      } else if (elapsed > 0) {
+        playCountdown();
       }
     };
 
@@ -108,54 +112,60 @@ export function useBoxingTimer({ roundTime, speed, bpm, rhythmEnabled, totalRoun
 
     setStatus('FIGHT');
     playBellStart();
+    
+    const durationMs = roundTime * 60 * 1000;
+    const startTime = Date.now();
+    
     setTimeLeft(roundTime * 60);
     startRhythm();
 
     timerRef.current = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-          stopRhythm();
-          playBellEnd();
+      const elapsedMs = Date.now() - startTime;
+      const remainingSec = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+      
+      setTimeLeft(remainingSec);
 
-          const nextRound = currentRoundRef.current + 1;
+      if (remainingSec <= 0) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+        stopRhythm();
+        playBellEnd();
 
-          if (currentRoundRef.current < totalRounds) {
-            setStatus('REST');
-            setRestTimeLeft(restTime);
-          } else {
-            playVoiceSFX('GOOD_JOB');
-            releaseWakeLock();
-            setStatus('COMPLETE');
-            setIsRunning(false);
-          }
-          return 0;
+        if (currentRoundRef.current < totalRounds) {
+          setStatus('REST');
+          setRestTimeLeft(restTime);
+        } else {
+          playVoiceSFX('GOOD_JOB');
+          releaseWakeLock();
+          setStatus('COMPLETE');
+          setIsRunning(false);
         }
-        return prev - 1;
-      });
-    }, 1000);
+      }
+    }, 200);
   }, [roundTime, startRhythm, stopRhythm, releaseWakeLock, totalRounds, restTime, clearAllIntervals]);
 
   // Handle REST period countdown
   const startRestPeriod = useCallback(() => {
     clearInterval(restRef.current);
 
+    const durationMs = restTime * 1000;
+    const startTime = Date.now();
+
     restRef.current = setInterval(() => {
-      setRestTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(restRef.current);
-          restRef.current = null;
-          // Increment round, then start countdown for next round
-          setCurrentRound(prevRound => prevRound + 1);
-          // Start GET READY countdown, then fight round
-          startCountdown(() => startFightRound());
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [startCountdown, startFightRound]);
+      const elapsedMs = Date.now() - startTime;
+      const remainingSec = Math.max(0, Math.ceil((durationMs - elapsedMs) / 1000));
+      
+      setRestTimeLeft(remainingSec);
+
+      if (remainingSec <= 0) {
+        clearInterval(restRef.current);
+        restRef.current = null;
+        setCurrentRound(prevRound => prevRound + 1);
+        startCountdown(() => startFightRoundRef.current());
+        return 0;
+      }
+    }, 200);
+  }, [restTime, startCountdown]);
 
   const stopRound = useCallback(() => {
     clearAllIntervals();

@@ -39,6 +39,8 @@ const audioBuffers = {};
 const loaded = new Set();
 
 let activeSources = new Set();
+let activeTimeouts = new Set();
+let pendingResolvers = new Set();
 
 function getContext() {
   if (!audioCtx || audioCtx.state === 'suspended') {
@@ -54,10 +56,20 @@ function resumeContext() {
 }
 
 export function stopAllAudio() {
+  // Stop all active audio nodes
   activeSources.forEach(src => {
     try { src.stop(); } catch (e) {}
   });
   activeSources.clear();
+
+  // Clear all pending timeouts (ghost loops)
+  activeTimeouts.forEach(id => clearTimeout(id));
+  activeTimeouts.clear();
+
+  // Resolve pending playCombo promises early to avoid hanging
+  pendingResolvers.forEach(resolve => resolve());
+  pendingResolvers.clear();
+
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
@@ -175,37 +187,100 @@ export async function playMoveAudio(moveKey) {
 }
 
 export async function playCombo(comboString) {
-  if (MOVE_AUDIO_MAP[comboString]) {
-    await playMoveFile(MOVE_AUDIO_MAP[comboString]);
-    return;
-  }
+  const ctx = resumeContext();
+  const items = [];
 
+  // Parse combo into items (move or speech)
   const parts = comboString.split(' ');
   let i = 0;
   while (i < parts.length) {
     let found = false;
+    // Check 3-word combo
     if (i + 2 < parts.length) {
       const threeKey = `${parts[i]} ${parts[i+1]} ${parts[i+2]}`;
       if (MOVE_AUDIO_MAP[threeKey]) {
-        await playMoveFile(MOVE_AUDIO_MAP[threeKey]);
+        items.push({ type: 'move', filename: MOVE_AUDIO_MAP[threeKey] });
         i += 3;
         found = true;
-        continue;
       }
     }
-    if (i + 1 < parts.length) {
+    // Check 2-word combo
+    if (!found && i + 1 < parts.length) {
       const twoKey = `${parts[i]} ${parts[i+1]}`;
       if (MOVE_AUDIO_MAP[twoKey]) {
-        await playMoveFile(MOVE_AUDIO_MAP[twoKey]);
+        items.push({ type: 'move', filename: MOVE_AUDIO_MAP[twoKey] });
         i += 2;
         found = true;
-        continue;
       }
     }
+    // Check 1-word combo or fallback
     if (!found) {
-      await playMoveAudio(parts[i]);
+      const filename = MOVE_AUDIO_MAP[parts[i]];
+      if (filename) {
+        items.push({ type: 'move', filename });
+      } else {
+        items.push({ type: 'speech', text: parts[i] });
+      }
       i++;
     }
+  }
+
+  // Load all buffers first
+  const scheduledItems = await Promise.all(items.map(async item => {
+    if (item.type === 'move') {
+      const buffer = await loadAudioBuffer(`/sounds/moves/${item.filename}`);
+      return { ...item, buffer };
+    }
+    return item;
+  }));
+
+  // Schedule sequentially
+  let startTime = ctx.currentTime + 0.05;
+  for (const item of scheduledItems) {
+    if (item.type === 'move' && item.buffer) {
+      const source = ctx.createBufferSource();
+      const gain = ctx.createGain();
+      source.buffer = item.buffer;
+      gain.gain.setValueAtTime(0.8, startTime);
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      activeSources.add(source);
+      source.onended = () => activeSources.delete(source);
+      source.start(startTime);
+      startTime += item.buffer.duration;
+    } else {
+      // Sync speech fallback (wait for AudioContext to reach current startTime)
+      const waitMs = (startTime - ctx.currentTime) * 1000;
+      if (waitMs > 0) {
+        await new Promise(resolve => {
+          const id = setTimeout(() => {
+            activeTimeouts.delete(id);
+            pendingResolvers.delete(resolve);
+            resolve();
+          }, waitMs);
+          activeTimeouts.add(id);
+          pendingResolvers.add(resolve);
+        });
+      }
+      
+      const text = item.type === 'speech' ? item.text : item.filename.replace(/\.mp3$/i, '').replace(/-/g, ' ');
+      await speak(text, 1.5, 0.9);
+      startTime = ctx.currentTime + 0.05;
+    }
+  }
+
+  // Wait for scheduled audio to finish + 100ms padding
+  const finalWaitMs = (startTime - ctx.currentTime) * 1000 + 100;
+  if (finalWaitMs > 0) {
+    await new Promise(resolve => {
+      const id = setTimeout(() => {
+        activeTimeouts.delete(id);
+        pendingResolvers.delete(resolve);
+        resolve();
+      }, finalWaitMs);
+      activeTimeouts.add(id);
+      pendingResolvers.add(resolve);
+    });
   }
 }
 
@@ -237,6 +312,7 @@ export function speakSimple(text) { speak(text, 1, 1); }
 export async function preloadAll() {
   const allFiles = [
     ...Object.values(MOVE_AUDIO_MAP).map(name => `/sounds/moves/${name}`),
+    ...Object.values(VOICE_SFX).map(name => `/sounds/${name}`),
     BELL_SFX.START,
     BELL_SFX.END,
   ];
