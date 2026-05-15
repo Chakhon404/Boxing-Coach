@@ -69,7 +69,15 @@ export function useComboEngine(mode = 'boxing_basic') {
 
     for (let i = 0; i < actualLength; i++) {
       // 2. Pick a random move from that category
-      const moves = CATEGORIES[currentCategory];
+      let moves = CATEGORIES[currentCategory];
+      
+      // Filter out previous move to prevent identical moves in a row (Test 3)
+      if (combo.length > 0) {
+        const lastMove = combo[combo.length - 1];
+        const filtered = moves.filter(m => m !== lastMove);
+        if (filtered.length > 0) moves = filtered;
+      }
+
       const move = pickRandom(moves);
       combo.push(move);
 
