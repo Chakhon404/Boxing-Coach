@@ -11,7 +11,10 @@ import { playVoiceSFX, preloadAll } from './lib/audioEngine';
 function useLocalStorage(key, defaultValue) {
   const [value, setValue] = useState(() => {
     const saved = localStorage.getItem(key);
-    return saved !== null ? (typeof defaultValue === 'boolean' ? saved === 'true' : Number(saved)) : defaultValue;
+    if (saved === null) return defaultValue;
+    if (typeof defaultValue === 'boolean') return saved === 'true';
+    if (typeof defaultValue === 'number') return Number(saved);
+    return saved;
   });
 
   useEffect(() => {
@@ -22,6 +25,7 @@ function useLocalStorage(key, defaultValue) {
 }
 
 export default function App() {
+  const [mode, setMode] = useLocalStorage('boxing_mode', 'boxing_basic');
   const [roundTime, setRoundTime] = useLocalStorage('boxing_time', 3);
   const [speed, setSpeed] = useLocalStorage('boxing_speed', 3000);
   const [bpm, setBpm] = useLocalStorage('boxing_bpm', 60);
@@ -37,20 +41,22 @@ export default function App() {
   const isRunningRef = useRef(false);
   const statusRef = useRef('READY');
 
+  const effectiveSpeed = mode === 'conditioning' ? 1500 : speed;
+
   useEffect(() => {
     preloadAll().then(() => setSoundsReady(true));
   }, []);
 
   const { timeLeft, status, isRunning, currentRound, totalRounds: tr, restTimeLeft, formatTime, startSession, stopRound } = useBoxingTimer({
     roundTime,
-    speed,
+    speed: effectiveSpeed,
     bpm,
     rhythmEnabled,
     totalRounds,
     restTime,
   });
 
-  const { generateCombo, formatComboColors, callCombo } = useComboEngine();
+  const { generateCombo, formatComboColors, callCombo } = useComboEngine(mode);
 
   useEffect(() => {
     statusRef.current = status;
@@ -69,9 +75,9 @@ export default function App() {
     await callCombo(comboText);
 
     if (isRunningRef.current && statusRef.current === 'FIGHT') {
-      comboLoopRef.current = setTimeout(runComboLoop, speed);
+      comboLoopRef.current = setTimeout(runComboLoop, effectiveSpeed);
     }
-  }, [speed, generateCombo, formatComboColors, callCombo]);
+  }, [effectiveSpeed, generateCombo, formatComboColors, callCombo]);
 
   useEffect(() => {
     isRunningRef.current = isRunning;
@@ -151,12 +157,14 @@ export default function App() {
 
       <SettingsPage
         isOpen={settingsOpen}
+        mode={mode}
         roundTime={roundTime}
         speed={speed}
         bpm={bpm}
         rhythmEnabled={rhythmEnabled}
         totalRounds={totalRounds}
         restTime={restTime}
+        onModeChange={setMode}
         onRoundTimeChange={setRoundTime}
         onSpeedChange={setSpeed}
         onBpmChange={setBpm}

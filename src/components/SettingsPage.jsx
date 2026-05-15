@@ -3,12 +3,14 @@ import { X } from 'lucide-react';
 
 export default function SettingsPage({
   isOpen,
+  mode,
   roundTime,
   speed,
   bpm,
   rhythmEnabled,
   totalRounds,
   restTime,
+  onModeChange,
   onRoundTimeChange,
   onSpeedChange,
   onBpmChange,
@@ -19,6 +21,13 @@ export default function SettingsPage({
   isRunning,
 }) {
   if (!isOpen) return null;
+
+  const modes = [
+    { id: 'boxing_basic', label: 'BOXING BASIC' },
+    { id: 'defense_focus', label: 'DEFENSE FOCUS' },
+    { id: 'footwork_focus', label: 'FOOTWORK FOCUS' },
+    { id: 'conditioning', label: 'CONDITIONING' },
+  ];
 
   return (
     <div className="fixed inset-0 z-50 bg-gym-black overflow-y-auto">
@@ -34,6 +43,25 @@ export default function SettingsPage({
         </div>
 
         <div className="bg-gym-card rounded-2xl border border-gray-700 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] p-5 space-y-6">
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {modes.map((m) => (
+              <button
+                key={m.id}
+                disabled={isRunning}
+                onClick={() => onModeChange(m.id)}
+                className={`py-4 px-2 rounded-xl font-bold text-sm tracking-tighter transition-all ${
+                  mode === m.id
+                    ? 'bg-gym-primary text-black scale-[1.02]'
+                    : 'bg-gym-card border border-gray-600 text-white opacity-60'
+                } ${isRunning ? 'opacity-50' : 'active:scale-95'}`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          <hr className="border-gray-700" />
+
           <div>
             <label className="block text-xl text-gray-400 mb-1">
               Round Time: <span className="text-gym-primary font-bold">{roundTime}</span> min

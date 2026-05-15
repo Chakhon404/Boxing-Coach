@@ -1,46 +1,92 @@
 import { useCallback } from 'react';
 import { playCombo } from '../lib/audioEngine';
 
-const transitions = {
-  'START': ['1-1', '1 body-2', 'slip-left', 'slip-right', 'roll-under', '1 2 3', 'drop'],
-  '1': ['2', 'slip-left', 'roll-under', 'body-2', '5'],
-  '1-1': ['2', 'body-2', 'drop', 'pivot'],
-  '2': ['3', 'roll-under', 'body-3', 'slip-right', 'pivot'],
-  'body-2': ['6', '4', '3', 'roll-under'],
-  'body-3': ['5', '3', '2', 'pivot', 'roll-under'],
-  '3': ['body-3', '2', 'roll-under', '5'],
-  '4': ['3', 'roll-under', 'body-3'],
-  '5': ['4', '3', 'body-3'],
-  '6': ['3', '4', 'roll-under'],
-  'slip-left':  ['5', '3', 'body-3', 'pivot'],
-  'slip-right': ['6', '2', 'body-2'],
-  'roll-under': ['3 2', '5 4', '6 3', 'body-3', 'pivot'],
-  'weave':      ['3', '2'],
-  'pivot':      ['2', '6', '1 2'],
-  'drop':       ['5', '6', '3']
+const CATEGORIES = {
+  strike:   ['1', '2', '3', '4', '5', '6', '1-1', 'body-2', 'body-3', '1 2', '1 2 3', '1 body'],
+  defense:  ['slip-left', 'slip-right', 'roll-under', 'weave'],
+  footwork: ['pivot', 'drop'],
+  counter:  ['2', '3', '5', '6', 'body-3'],
+  reset:    ['pivot', 'drop', 'slip-left', 'slip-right'],
 };
 
-export function useComboEngine() {
+const GRAMMAR = {
+  strike:   ['strike', 'defense', 'footwork', 'reset'],
+  defense:  ['counter', 'footwork', 'reset'],
+  footwork: ['strike', 'footwork', 'defense'],
+  counter:  ['strike', 'reset', 'footwork'],
+  reset:    ['strike', 'footwork'],
+};
+
+const MODE_WEIGHTS = {
+  boxing_basic: {
+    strike: 0.55, defense: 0.15, footwork: 0.15, counter: 0.10, reset: 0.05
+  },
+  defense_focus: {
+    strike: 0.25, defense: 0.35, footwork: 0.15, counter: 0.20, reset: 0.05
+  },
+  footwork_focus: {
+    strike: 0.25, defense: 0.15, footwork: 0.40, counter: 0.10, reset: 0.10
+  },
+  conditioning: {
+    strike: 0.60, defense: 0.10, footwork: 0.15, counter: 0.10, reset: 0.05
+  },
+};
+
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function pickWeightedCategory(allowedCategories, mode) {
+  const weights = MODE_WEIGHTS[mode] || MODE_WEIGHTS.boxing_basic;
+  const filteredWeights = allowedCategories.map(cat => weights[cat] || 0);
+  const totalWeight = filteredWeights.reduce((acc, w) => acc + w, 0);
+
+  if (totalWeight <= 0) return pickRandom(allowedCategories);
+
+  let random = Math.random() * totalWeight;
+  for (let i = 0; i < allowedCategories.length; i++) {
+    if (random < filteredWeights[i]) return allowedCategories[i];
+    random -= filteredWeights[i];
+  }
+  return allowedCategories[0];
+}
+
+function getCategoryOfMove(move, expectedCategories) {
+  for (const cat of expectedCategories) {
+    if (CATEGORIES[cat].includes(move)) return cat;
+  }
+  for (const cat in CATEGORIES) {
+    if (CATEGORIES[cat].includes(move)) return cat;
+  }
+  return 'strike';
+}
+
+export function useComboEngine(mode = 'boxing_basic') {
   const generateCombo = useCallback(() => {
     const combo = [];
-    let currentMove = 'START';
     const actualLength = Math.random() < 0.7 ? (Math.floor(Math.random() * 2) + 2) : 4;
 
+    // 1. Start from category 'strike' or 'footwork' (random, weighted by mode)
+    let currentCategory = pickWeightedCategory(['strike', 'footwork'], mode);
+
     for (let i = 0; i < actualLength; i++) {
-      const possibleMoves = transitions[currentMove] || transitions['START'];
-      const nextMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+      // 2. Pick a random move from that category
+      const moves = CATEGORIES[currentCategory];
+      const move = pickRandom(moves);
+      combo.push(move);
 
-      if (nextMove !== 'START') combo.push(nextMove);
+      // 3. Look up that move's category in CATEGORIES (reverse lookup)
+      // Using expected currentCategory to handle ambiguous moves like 'pivot'
+      currentCategory = getCategoryOfMove(move, [currentCategory]);
 
-      if (nextMove.includes(' ') && !nextMove.includes('-')) {
-        const parts = nextMove.split(' ');
-        currentMove = parts[parts.length - 1];
-      } else {
-        currentMove = nextMove;
-      }
+      // 4. Use GRAMMAR to get allowed next categories
+      const allowedNext = GRAMMAR[currentCategory];
+
+      // 5/6. Filter by weights > 0 and pick next category using weighted random
+      currentCategory = pickWeightedCategory(allowedNext, mode);
+      
+      // (Step 7: Pick random move from that category happens at start of next iteration)
     }
     return combo.join(' ');
-  }, []);
+  }, [mode]);
 
   const formatComboColors = useCallback((text) => {
     const elements = text.split(' ').map((word, idx) => {
